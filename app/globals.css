@@ -1,26 +1,157 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --bg-main: #111318;
+    --bg-secondary: #171a20;
+    --surface: #1d2129;
+    --surface-elevated: #232832;
+    --border-color: #303642;
+    
+    --text-primary: #f1f0ec;
+    --text-secondary: #a7a9ad;
+    --text-muted: #6f737b;
+
+    /* Card colors (physical printed tabletop aesthetic) */
+    --card-unrevealed-bg: #e8e5de;
+    --card-unrevealed-text: #24262a;
+    --card-unrevealed-border: #d4d0c7;
+
+    --team-red: #b85c5c;
+    --team-blue: #52759b;
+    --neutral-stone: #c8bfae;
+    --assassin-dark: #292b30;
+  }
+
+  body {
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overflow-x: hidden;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Custom Tabletop Surface & Card Utility Classes */
+.bg-main { background-color: #111318; }
+.bg-secondary { background-color: #171a20; }
+.bg-surface { background-color: #1d2129; }
+.bg-surface-elevated { background-color: #232832; }
+
+.border-main { border-color: #303642; }
+
+/* Physical Game Card Styles */
+.game-card-unrevealed {
+  background-color: #e8e5de;
+  color: #24262a;
+  border: 1px solid #d4d0c7;
+  border-radius: 12px;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.15s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.game-card-unrevealed:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.35);
+}
+
+.game-card-revealed-red {
+  background-color: #b85c5c;
+  color: #ffffff;
+  border: 1px solid #a44e4e;
+  border-radius: 12px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.game-card-revealed-blue {
+  background-color: #52759b;
+  color: #ffffff;
+  border: 1px solid #436489;
+  border-radius: 12px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.game-card-revealed-neutral {
+  background-color: #c8bfae;
+  color: #24262a;
+  border: 1px solid #b5ab99;
+  border-radius: 12px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.game-card-revealed-assassin {
+  background-color: #292b30;
+  color: #f1f0ec;
+  border: 1px solid #1a1c20;
+  border-radius: 12px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* Spymaster Card Background Hints (Vibrant Tabletop Key Colors) */
+.spymaster-hint-red {
+  background-color: #8C2A2A !important;
+  color: #FFFFFF !important;
+  border: 2px solid #C85A5A !important;
+  box-shadow: 0 3px 8px rgba(140, 42, 42, 0.35);
+}
+
+.spymaster-hint-blue {
+  background-color: #274D75 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #5A85B5 !important;
+  box-shadow: 0 3px 8px rgba(39, 77, 117, 0.35);
+}
+
+.spymaster-hint-neutral {
+  background-color: #524B40 !important;
+  color: #E8E2D5 !important;
+  border: 2px solid #807667 !important;
+}
+
+.spymaster-hint-assassin {
+  background-color: #2E323B !important;
+  color: #FFFFFF !important;
+  border: 2px solid #64748B !important;
+  box-shadow: 0 0 12px rgba(148, 163, 184, 0.45);
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* 3D Card Flip and Image Reveal Animations */
+.card-perspective {
+  perspective: 1000px;
+}
+
+.card-flip-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+.card-flipped .card-flip-inner {
+  transform: rotateY(180deg);
+}
+
+.card-face-front,
+.card-face-back {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.card-face-back {
+  transform: rotateY(180deg);
 }

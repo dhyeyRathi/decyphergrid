@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <rect width="512" height="512" rx="128" fill="#111318"/>
+  <rect x="32" y="32" width="448" height="448" rx="96" fill="#171A20" stroke="#303642" stroke-width="16"/>
+  
+  <!-- Mini 3x3 Grid Icon Representation -->
+  <rect x="96" y="96" width="96" height="96" rx="20" fill="#B85C5C"/>
+  <rect x="208" y="96" width="96" height="96" rx="20" fill="#E8E5DE"/>
+  <rect x="320" y="96" width="96" height="96" rx="20" fill="#52759B"/>
+
+  <rect x="96" y="208" width="96" height="96" rx="20" fill="#E8E5DE"/>
+  <rect x="208" y="208" width="96" height="96" rx="20" fill="#292B30" stroke="#303642" stroke-width="6"/>
+  <rect x="320" y="208" width="96" height="96" rx="20" fill="#B85C5C"/>
+
+  <rect x="96" y="320" width="96" height="96" rx="20" fill="#52759B"/>
+  <rect x="208" y="320" width="96" height="96" rx="20" fill="#C8BFAE"/>
+  <rect x="320" y="320" width="96" height="96" rx="20" fill="#E8E5DE"/>
+</svg>
