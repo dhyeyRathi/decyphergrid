@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Volume2, VolumeX, Copy, Check } from "lucide-react";
+import { Volume2, VolumeX, Copy, Check, LogOut } from "lucide-react";
 import { sounds } from "@/lib/soundEffects";
 import { copyToClipboard } from "@/lib/clipboard";
 import { PublicRoomState } from "@/types/game";
@@ -46,11 +46,11 @@ export default function Header({
   };
 
   return (
-    <header className="border-b border-[#303642] bg-[#171A20] px-6 py-4">
+    <header className="border-b border-[#303642] bg-[#171A20] px-3 sm:px-6 py-3 sm:py-4">
       <div className="max-w-6xl mx-auto flex items-center justify-between">
         {/* Brand */}
-        <Link href="/" className="flex items-center space-x-3 group">
-          <span className="text-xl font-black tracking-widest text-[#F1F0EC] uppercase font-mono">
+        <Link href="/" className="flex items-center space-x-3 group min-w-0">
+          <span className="text-base sm:text-xl font-black tracking-widest text-[#F1F0EC] uppercase font-mono truncate">
             DECYPHER<span className="text-[#A7A9AD]">GRID</span>
           </span>
         </Link>
@@ -88,9 +88,10 @@ export default function Header({
           {onLeaveGame && (
             <button
               onClick={onLeaveGame}
-              className="text-[#A7A9AD] hover:text-[#B85C5C] transition-colors font-medium"
+              className="text-[#A7A9AD] hover:text-[#B85C5C] transition-colors font-medium flex items-center"
+              aria-label="Leave Game"
             >
-              <span className="sm:hidden">Leave</span>
+              <LogOut className="w-4 h-4 sm:hidden" />
               <span className="hidden sm:inline">Leave Game</span>
             </button>
           )}

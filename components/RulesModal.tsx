@@ -21,9 +21,9 @@ export default function RulesModal({ isOpen, onClose }: RulesModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="w-full max-w-xl max-h-[85vh] overflow-y-auto no-scrollbar p-6 sm:p-8 rounded-3xl bg-[#1D2129] border border-[#303642] shadow-2xl space-y-6 font-mono">
+      <div className="w-full max-w-xl max-h-[85vh] flex flex-col rounded-3xl bg-[#1D2129] border border-[#303642] shadow-2xl font-mono overflow-hidden">
         {/* Header */}
-        <div className="flex items-start justify-between pb-4 border-b border-[#303642]">
+        <div className="flex items-start justify-between p-6 sm:p-8 pb-4 border-b border-[#303642] shrink-0 bg-[#1D2129] z-10">
           <div>
             <h2 className="text-2xl font-black text-[#F1F0EC] tracking-wider uppercase">
               HOW TO PLAY
@@ -40,8 +40,10 @@ export default function RulesModal({ isOpen, onClose }: RulesModalProps) {
           </button>
         </div>
 
-        {/* 1. THE BOARD */}
-        <div className="p-4 rounded-2xl bg-[#171A20] border border-[#303642] space-y-3">
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto no-scrollbar p-6 sm:p-8 pt-6 space-y-6 bg-[#1D2129]">
+          {/* 1. THE BOARD */}
+          <div className="p-4 rounded-2xl bg-[#171A20] border border-[#303642] space-y-3">
           <div className="text-xs font-bold text-[#F1F0EC] uppercase tracking-wider">
             1. THE BOARD
           </div>
@@ -195,6 +197,7 @@ export default function RulesModal({ isOpen, onClose }: RulesModalProps) {
           >
             START PLAYING
           </button>
+        </div>
         </div>
       </div>
     </div>
