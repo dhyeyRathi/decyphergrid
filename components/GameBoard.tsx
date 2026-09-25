@@ -113,7 +113,7 @@ export default function GameBoard({
   return (
     <div className="h-screen max-h-screen w-full flex flex-col lg:flex-row bg-[#111318] text-[#F1F0EC] overflow-hidden relative">
       {/* ================= TOP PANEL (MOBILE < lg) / LEFT SIDEBAR (DESKTOP ≥ lg) ================= */}
-      <div className="w-full lg:w-80 xl:w-96 bg-[#171A20] border-b lg:border-b-0 lg:border-r border-[#303642] p-3 sm:p-4 flex flex-col justify-start shrink-0 gap-2 sm:gap-3 max-h-[30vh] lg:max-h-full overflow-y-auto no-scrollbar">
+      <div className="w-full lg:w-80 xl:w-96 bg-[#171A20] border-b lg:border-b-0 lg:border-r border-[#303642] p-2 sm:p-3 lg:p-4 flex flex-col justify-start shrink-0 gap-2 sm:gap-3 lg:max-h-full overflow-y-auto no-scrollbar z-10">
         {/* Brand & Room Header */}
         <div className="flex items-center justify-between pb-2 border-b border-[#303642]">
           <div className="flex items-center space-x-2">
@@ -152,119 +152,129 @@ export default function GameBoard({
           </div>
         </div>
 
-        {/* Turn Status & Score Bar */}
-        <div className="bg-[#111318] border border-[#303642] p-2.5 rounded-xl flex items-center justify-between font-mono text-xs">
-          <div className="flex items-center space-x-2">
-            <span
-              className={`w-2.5 h-2.5 rounded-full ${
-                game.currentTeam === "RED" ? "bg-[#B85C5C]" : "bg-[#52759B]"
-              }`}
-            />
-            <span className={`font-bold uppercase tracking-wider ${currentTeamColor}`}>
-              {game.currentTeam} TURN
-            </span>
-          </div>
-
-          <div className="flex items-center space-x-3 font-bold text-xs">
-            <span className="text-[#B85C5C]">RED <strong className="text-[#F1F0EC]">{game.redCardsLeft}</strong>/9</span>
-            <span className="text-[#303642]">|</span>
-            <span className="text-[#52759B]">BLUE <strong className="text-[#F1F0EC]">{game.blueCardsLeft}</strong>/8</span>
-          </div>
-        </div>
-
-        {/* Player Role Indicator */}
-        {player && (
-          <div
-            className={`px-3 py-2 rounded-lg text-center font-bold text-xs uppercase tracking-widest border ${
-              player.team === "RED"
-                ? "bg-[#B85C5C]/10 border-[#B85C5C]/30 text-[#B85C5C]"
-                : "bg-[#52759B]/10 border-[#52759B]/30 text-[#52759B]"
-            }`}
-          >
-            YOU ARE {player.team} {player.role === "SPYMASTER" ? "SPY MASTER" : "OPERATIVE"}
-          </div>
-        )}
-
-        {/* Clue Control Box */}
-        <div className="bg-[#111318] border border-[#303642] p-2.5 rounded-xl font-mono text-xs">
-          {canSubmitClue ? (
-            <form onSubmit={handleClueSubmit} className="flex flex-wrap sm:flex-nowrap items-center gap-2">
-              <input
-                type="text"
-                value={clueWord}
-                onChange={(e) => {
-                  setClueWord(e.target.value.toUpperCase().trim());
-                  if (clueError) setClueError("");
-                }}
-                placeholder="ENTER CLUE WORD"
-                maxLength={20}
-                className="flex-1 min-w-[120px] px-3 py-1.5 bg-[#171A20] border border-[#303642] rounded-lg text-[#F1F0EC] font-bold placeholder-[#6F737B] focus:outline-none uppercase text-xs"
-              />
-
-              <div className="flex items-center space-x-1.5">
-                <select
-                  value={clueNumber}
-                  onChange={(e) => setClueNumber(Number(e.target.value))}
-                  className="px-2 py-1.5 bg-[#171A20] border border-[#303642] rounded-lg text-[#F1F0EC] font-bold text-xs focus:outline-none"
-                >
-                  {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-
-                <button
-                  type="submit"
-                  className="px-3.5 py-1.5 bg-[#232832] border border-[#303642] text-[#F1F0EC] font-bold text-xs uppercase tracking-wider rounded-lg hover:bg-[#303642] transition-colors shrink-0 cursor-pointer"
-                >
-                  GIVE CLUE
-                </button>
-              </div>
-
-              {clueError && <p className="w-full text-xs text-[#B85C5C] mt-1">{clueError}</p>}
-            </form>
-          ) : isGuessingPhase && game.currentClue ? (
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center space-x-2 truncate">
-                <span className="text-[10px] text-[#6F737B] uppercase font-bold">CLUE:</span>
-                <span className="text-sm font-black text-[#F1F0EC] uppercase tracking-wider truncate">
-                  {game.currentClue.word}
-                </span>
-                <span className="text-xs font-bold text-[#A7A9AD]">
-                  ({game.currentClue.number})
+        {/* MOBILE: SIDE-BY-SIDE | DESKTOP: STACKED */}
+        <div className="flex flex-row lg:flex-col gap-2 sm:gap-3">
+          
+          {/* Left Column on Mobile */}
+          <div className="flex-1 flex flex-col gap-2 sm:gap-3 justify-center">
+            {/* Turn Status & Score Bar */}
+            <div className="bg-[#111318] border border-[#303642] p-2 sm:p-2.5 rounded-xl flex items-center justify-between font-mono text-[10px] sm:text-xs">
+              <div className="flex items-center space-x-1.5 sm:space-x-2">
+                <span
+                  className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full ${
+                    game.currentTeam === "RED" ? "bg-[#B85C5C]" : "bg-[#52759B]"
+                  }`}
+                />
+                <span className={`font-bold uppercase tracking-wider ${currentTeamColor}`}>
+                  {game.currentTeam}
                 </span>
               </div>
 
-              <div className="flex items-center space-x-3 shrink-0">
-                <span className="text-[11px] text-[#6F737B]">Left: <strong className="text-[#F1F0EC]">{game.guessesRemaining}</strong></span>
+              <div className="flex items-center space-x-1 sm:space-x-3 font-bold text-[10px] sm:text-xs">
+                <span className="text-[#B85C5C]"><strong className="text-[#F1F0EC]">{game.redCardsLeft}</strong>/9</span>
+                <span className="text-[#303642]">|</span>
+                <span className="text-[#52759B]"><strong className="text-[#F1F0EC]">{game.blueCardsLeft}</strong>/8</span>
+              </div>
+            </div>
 
-                {canEndTurn && (
-                  <button
-                    onClick={() => {
-                      onEndTurn();
-                      sounds.playCardClick();
+            {/* Player Role Indicator */}
+            {player && (
+              <div
+                className={`px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg text-center font-bold text-[10px] sm:text-xs uppercase tracking-widest border ${
+                  player.team === "RED"
+                    ? "bg-[#B85C5C]/10 border-[#B85C5C]/30 text-[#B85C5C]"
+                    : "bg-[#52759B]/10 border-[#52759B]/30 text-[#52759B]"
+                }`}
+              >
+                YOU ARE {player.team} {player.role === "SPYMASTER" ? "SPY MASTER" : "OP."}
+              </div>
+            )}
+          </div>
+
+          {/* Right Column on Mobile */}
+          <div className="flex-1 flex flex-col justify-center">
+            {/* Clue Control Box */}
+            <div className="bg-[#111318] border border-[#303642] p-2 sm:p-2.5 rounded-xl font-mono text-xs h-full flex flex-col justify-center">
+              {canSubmitClue ? (
+                <form onSubmit={handleClueSubmit} className="flex flex-col sm:flex-row flex-wrap sm:flex-nowrap items-center gap-1.5 sm:gap-2">
+                  <input
+                    type="text"
+                    value={clueWord}
+                    onChange={(e) => {
+                      setClueWord(e.target.value.toUpperCase().trim());
+                      if (clueError) setClueError("");
                     }}
-                    className="px-2.5 py-1 rounded-lg bg-[#232832] border border-[#303642] text-[#F1F0EC] hover:bg-[#303642] text-xs font-bold transition-colors cursor-pointer"
-                  >
-                    END TURN
-                  </button>
-                )}
-              </div>
+                    placeholder="ENTER CLUE"
+                    maxLength={20}
+                    className="w-full flex-1 min-w-[80px] px-2 py-1 sm:px-3 sm:py-1.5 bg-[#171A20] border border-[#303642] rounded-lg text-[#F1F0EC] font-bold placeholder-[#6F737B] focus:outline-none uppercase text-[10px] sm:text-xs"
+                  />
+
+                  <div className="flex items-center space-x-1.5 w-full sm:w-auto">
+                    <select
+                      value={clueNumber}
+                      onChange={(e) => setClueNumber(Number(e.target.value))}
+                      className="px-1.5 py-1 sm:px-2 sm:py-1.5 bg-[#171A20] border border-[#303642] rounded-lg text-[#F1F0EC] font-bold text-[10px] sm:text-xs focus:outline-none"
+                    >
+                      {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+
+                    <button
+                      type="submit"
+                      className="flex-1 px-2 py-1 sm:px-3.5 sm:py-1.5 bg-[#232832] border border-[#303642] text-[#F1F0EC] font-bold text-[10px] sm:text-xs uppercase tracking-wider rounded-lg hover:bg-[#303642] transition-colors cursor-pointer"
+                    >
+                      GIVE CLUE
+                    </button>
+                  </div>
+
+                  {clueError && <p className="w-full text-[10px] text-[#B85C5C] mt-0.5">{clueError}</p>}
+                </form>
+              ) : isGuessingPhase && game.currentClue ? (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-1.5 sm:gap-2 h-full">
+                  <div className="flex items-center space-x-1.5 truncate">
+                    <span className="text-[9px] sm:text-[10px] text-[#6F737B] uppercase font-bold">CLUE:</span>
+                    <span className="text-xs sm:text-sm font-black text-[#F1F0EC] uppercase tracking-wider truncate">
+                      {game.currentClue.word}
+                    </span>
+                    <span className="text-[10px] sm:text-xs font-bold text-[#A7A9AD]">
+                      ({game.currentClue.number})
+                    </span>
+                  </div>
+
+                  <div className="flex items-center space-x-2 shrink-0">
+                    <span className="text-[10px] sm:text-[11px] text-[#6F737B]">Left: <strong className="text-[#F1F0EC]">{game.guessesRemaining}</strong></span>
+
+                    {canEndTurn && (
+                      <button
+                        onClick={() => {
+                          onEndTurn();
+                          sounds.playCardClick();
+                        }}
+                        className="px-2 py-1 sm:px-2.5 sm:py-1 rounded-lg bg-[#232832] border border-[#303642] text-[#F1F0EC] hover:bg-[#303642] text-[10px] sm:text-xs font-bold transition-colors cursor-pointer"
+                      >
+                        END TURN
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-[9px] sm:text-[11px] text-[#A7A9AD] text-center">
+                  {isCluePhase
+                    ? `Waiting for ${game.currentTeam} Spymaster...`
+                    : `${game.currentTeam} choosing cards...`}
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="text-[11px] text-[#A7A9AD] text-center py-0.5">
-              {isCluePhase
-                ? `Waiting for ${game.currentTeam} Spymaster clue...`
-                : `${game.currentTeam} Operatives choosing cards...`}
-            </div>
-          )}
+          </div>
         </div>
       </div>
 
       {/* ================= CENTER PANEL: 5x5 CARDS GRID ================= */}
-      <div className="flex-1 min-h-0 w-full lg:h-full flex items-center justify-center p-2 sm:p-4 lg:p-6 overflow-hidden mx-auto @container">
-        <div className="grid grid-cols-5 gap-1.5 sm:gap-2.5 lg:gap-3.5 mx-auto w-[100cqmin] h-[100cqmin]">
+      <div className="flex-1 min-h-0 w-full lg:h-full flex items-center justify-center p-2 sm:p-4 lg:p-6 overflow-hidden mx-auto">
+        <div className="grid grid-cols-5 gap-1.5 sm:gap-2.5 lg:gap-3.5 mx-auto w-full aspect-square max-w-[calc(100vh-190px)] sm:max-w-[calc(100vh-230px)] lg:max-w-[calc(100vh-100px)]">
           {game.cards.map((card) => (
             <GridCardItem
               key={card.id}

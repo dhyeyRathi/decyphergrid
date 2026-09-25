@@ -59,10 +59,19 @@ export function useSocket() {
         const ws = new WebSocket(wsUrl);
         socketRef.current = ws;
 
+        let pingInterval: NodeJS.Timeout;
+
         ws.onopen = () => {
           console.log("✅ [Decyphergrid WS] WebSocket connection established successfully!");
           setIsConnected(true);
           ws.send(JSON.stringify({ type: "register", roomCode, playerId: pid }));
+          
+          // Application-level ping to keep cloud load-balancers alive
+          pingInterval = setInterval(() => {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: "ping", playerId: pid }));
+            }
+          }, 20000);
         };
 
         ws.onmessage = (event) => {
@@ -88,6 +97,7 @@ export function useSocket() {
 
           console.warn("⚠️ [Decyphergrid WS] WebSocket connection dropped. Reconnecting in 3s...");
           setIsConnected(false);
+          clearInterval(pingInterval);
           
           reconnectTimeoutRef.current = setTimeout(() => {
             if (activeRoomCodeRef.current) {

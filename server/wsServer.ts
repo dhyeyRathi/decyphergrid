@@ -111,6 +111,13 @@ wss.on("connection", (ws: WebSocket) => {
         return;
       }
 
+      // Handle Application-level Pings
+      if (msg.type === "ping") {
+        const client = clients.get(msg.playerId);
+        if (client) client.isAlive = true;
+        return;
+      }
+
       // Process Game Actions
       if (msg.type === "action") {
         const {
