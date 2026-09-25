@@ -213,44 +213,46 @@ export default function GameBoard({
             {/* Clue Control Box */}
             <div className="bg-[#111318] border border-[#303642] p-2 sm:p-2.5 rounded-xl font-mono text-xs h-full flex flex-col justify-center">
               {canSubmitClue ? (
-                <form onSubmit={handleClueSubmit} className="flex flex-col sm:flex-row flex-wrap sm:flex-nowrap items-center gap-1.5 sm:gap-2">
-                  <input
-                    type="text"
-                    value={clueWord}
-                    onChange={(e) => {
-                      setClueWord(e.target.value.toUpperCase().trim());
-                      if (clueError) setClueError("");
-                    }}
-                    placeholder="ENTER CLUE"
-                    maxLength={20}
-                    className="w-full flex-1 min-w-[80px] px-2 py-1 sm:px-3 sm:py-1.5 bg-[#171A20] border border-[#303642] rounded-lg text-[#F1F0EC] font-bold placeholder-[#6F737B] focus:outline-none uppercase text-[10px] sm:text-xs"
-                  />
+                <>
+                  <form onSubmit={handleClueSubmit} className="flex flex-col sm:flex-row flex-wrap sm:flex-nowrap items-center gap-1.5 sm:gap-2">
+                    <input
+                      type="text"
+                      value={clueWord}
+                      onChange={(e) => {
+                        setClueWord(e.target.value.toUpperCase().trim());
+                        if (clueError) setClueError("");
+                      }}
+                      placeholder="ENTER CLUE"
+                      maxLength={20}
+                      className="w-full flex-1 min-w-[80px] px-2 py-1 sm:px-3 sm:py-1.5 bg-[#171A20] border border-[#303642] rounded-lg text-[#F1F0EC] font-bold placeholder-[#6F737B] focus:outline-none uppercase text-[10px] sm:text-xs"
+                    />
 
-                  <div className="flex items-center space-x-1.5 w-full sm:w-auto">
-                    <select
-                      value={clueNumber}
-                      onChange={(e) => setClueNumber(Number(e.target.value))}
-                      className="px-1.5 py-1 sm:px-2 sm:py-1.5 bg-[#171A20] border border-[#303642] rounded-lg text-[#F1F0EC] font-bold text-[10px] sm:text-xs focus:outline-none"
-                    >
-                      <option value={0} disabled>
-                        --
-                      </option>
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-                        <option key={n} value={n}>
-                          {n}
+                    <div className="flex items-center space-x-1.5 w-full sm:w-auto">
+                      <select
+                        value={clueNumber}
+                        onChange={(e) => setClueNumber(Number(e.target.value))}
+                        className="px-1.5 py-1 sm:px-2 sm:py-1.5 bg-[#171A20] border border-[#303642] rounded-lg text-[#F1F0EC] font-bold text-[10px] sm:text-xs focus:outline-none"
+                      >
+                        <option value={0} disabled>
+                          --
                         </option>
-                      ))}
-                    </select>
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+                          <option key={n} value={n}>
+                            {n}
+                          </option>
+                        ))}
+                      </select>
 
-                    <button
-                      type="submit"
-                      className="flex-1 px-2 py-1 sm:px-3.5 sm:py-1.5 bg-[#232832] border border-[#303642] text-[#F1F0EC] font-bold text-[10px] sm:text-xs uppercase tracking-wider rounded-lg hover:bg-[#303642] transition-colors cursor-pointer"
-                    >
-                      GIVE CLUE
-                    </button>
-                  </div>
-                </form>
-                {clueError && <p className="w-full text-[10px] text-[#B85C5C] mt-2 px-1">{clueError}</p>}
+                      <button
+                        type="submit"
+                        className="flex-1 px-2 py-1 sm:px-3.5 sm:py-1.5 bg-[#232832] border border-[#303642] text-[#F1F0EC] font-bold text-[10px] sm:text-xs uppercase tracking-wider rounded-lg hover:bg-[#303642] transition-colors cursor-pointer"
+                      >
+                        GIVE CLUE
+                      </button>
+                    </div>
+                  </form>
+                  {clueError && <p className="w-full text-[10px] text-[#B85C5C] mt-2 px-1">{clueError}</p>}
+                </>
               ) : isGuessingPhase && game.currentClue ? (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-1.5 sm:gap-2 h-full">
                   <div className="flex items-center space-x-1.5 truncate">
