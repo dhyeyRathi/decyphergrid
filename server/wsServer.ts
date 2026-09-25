@@ -71,15 +71,7 @@ wss.on("connection", (ws: WebSocket) => {
     try {
       const msg = JSON.parse(data.toString());
 
-      // Ping / Pong heartbeat
-      if (msg.type === "ping") {
-        if (clientPlayerId && clients.has(clientPlayerId)) {
-          const c = clients.get(clientPlayerId)!;
-          c.isAlive = true;
-        }
-        ws.send(JSON.stringify({ type: "pong" }));
-        return;
-      }
+      // (Ping handler removed from here, it's handled below)
 
       // Register connection binding (roomCode + playerId)
       if (msg.type === "register" || msg.type === "init") {
