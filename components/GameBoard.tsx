@@ -73,8 +73,8 @@ export default function GameBoard({
   const isGuessingPhase = game.phase === "GUESSING";
 
   const canSubmitClue = isCluePhase && isSpymaster && isMyTeamTurn;
-  const canGuessCard = isGuessingPhase && isMyTeamTurn;
-  const canEndTurn = isGuessingPhase && isMyTeamTurn;
+  const canGuessCard = isGuessingPhase && isMyTeamTurn && isOperative;
+  const canEndTurn = isGuessingPhase && isMyTeamTurn && isOperative;
 
   const handleClueSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -263,10 +263,9 @@ export default function GameBoard({
       </div>
 
       {/* ================= CENTER PANEL: 5x5 CARDS GRID ================= */}
-      <div className="flex-1 min-h-0 w-full relative">
-        <div className="absolute inset-2 sm:inset-4 lg:inset-6 flex items-center justify-center overflow-hidden">
-          <div className="fit-square grid grid-cols-5 gap-1.5 sm:gap-2.5 lg:gap-3.5 mx-auto">
-            {game.cards.map((card) => (
+      <div className="flex-1 min-h-0 w-full lg:h-full flex items-center justify-center p-2 sm:p-4 lg:p-6 overflow-hidden mx-auto @container">
+        <div className="grid grid-cols-5 gap-1.5 sm:gap-2.5 lg:gap-3.5 mx-auto w-[100cqmin] h-[100cqmin]">
+          {game.cards.map((card) => (
             <GridCardItem
               key={card.id}
               card={card}
@@ -276,7 +275,6 @@ export default function GameBoard({
               onCardClick={handleCardClick}
             />
           ))}
-          </div>
         </div>
       </div>
 
@@ -412,7 +410,7 @@ function GridCardItem({
 
           {/* OVERLAY IMAGE BOX LID: Animates sliding UPWARD when clicked for 3 seconds */}
           <div
-            className={`absolute inset-0 z-10 w-full h-full relative overflow-hidden bg-[#171A20] transition-transform duration-500 ease-in-out border-b border-[#303642] ${
+            className={`absolute inset-0 z-10 w-full h-full overflow-hidden bg-[#171A20] transition-transform duration-500 ease-in-out ${
               isPeeking ? "-translate-y-[88%]" : "translate-y-0"
             }`}
           >
@@ -421,7 +419,7 @@ function GridCardItem({
               <img
                 src={cardImg}
                 alt={card.word}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover object-center scale-[1.02]"
               />
             ) : (
               <div className="w-full h-full bg-[#171A20]" />

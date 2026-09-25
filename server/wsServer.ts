@@ -259,6 +259,13 @@ wss.on("connection", (ws: WebSocket) => {
     }
   });
 
+  ws.on("pong", () => {
+    if (clientPlayerId) {
+      const client = clients.get(clientPlayerId);
+      if (client) client.isAlive = true;
+    }
+  });
+
   ws.on("close", () => {
     if (clientPlayerId) {
       clients.delete(clientPlayerId);
