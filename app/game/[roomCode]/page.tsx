@@ -27,6 +27,7 @@ export default function GameRoomPage({ params }: PageProps) {
     playerId,
     roomState,
     errorMsg,
+    isRoomNotFound,
     clearError,
     joinRoom,
     setTeamAndRole,
@@ -72,15 +73,11 @@ export default function GameRoomPage({ params }: PageProps) {
 
     joinRoom(roomCode, playerName)
       .then(() => {
-        if (mounted) {
-          setIsJoining(false);
-        }
+        if (mounted) setIsJoining(false);
       })
       .catch((err) => {
         console.error("Join room error:", err);
-        if (mounted) {
-          setIsJoining(false);
-        }
+        if (mounted) setIsJoining(false);
       });
 
     return () => {
@@ -112,7 +109,7 @@ export default function GameRoomPage({ params }: PageProps) {
       )}
 
       {/* Main Game Area */}
-      {isJoining && !roomState ? (
+      {(!roomState && !isRoomNotFound) ? (
         <div className="flex-1 flex flex-col items-center justify-center space-y-4 font-mono text-[#A7A9AD]">
           <Loader2 className="w-8 h-8 text-[#A7A9AD] animate-spin" />
           <p className="text-sm">Joining room...</p>

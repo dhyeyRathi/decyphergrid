@@ -8,6 +8,7 @@ export function useSocket() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [playerId, setPlayerId] = useState<string>("");
   const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [isRoomNotFound, setIsRoomNotFound] = useState<boolean>(false);
 
   const socketRef = useRef<WebSocket | null>(null);
   const activeRoomCodeRef = useRef<string | null>(null);
@@ -69,9 +70,14 @@ export function useSocket() {
             const data = JSON.parse(event.data);
             if ((data.type === "room_state" || data.type === "action_response") && data.state) {
               setRoomState(data.state);
+              setIsRoomNotFound(false);
             } else if (data.error) {
-              setErrorMsg(data.error);
-              setTimeout(() => setErrorMsg(null), 4000);
+              if (data.error === "Room not found") {
+                setIsRoomNotFound(true);
+              } else {
+                setErrorMsg(data.error);
+                setTimeout(() => setErrorMsg(null), 4000);
+              }
             }
           } catch {}
         };
@@ -278,6 +284,7 @@ export function useSocket() {
     playerId,
     roomState,
     errorMsg,
+    isRoomNotFound,
     clearError,
     createRoom,
     joinRoom,
