@@ -533,7 +533,7 @@ export function leaveGameLogic(room: Room, playerId: string): Room {
         game.winReason = `${reason} It's a draw!`;
       }
 
-      addLog(game, "GAME_OVER", game.winReason);
+      addLog(game, "SYSTEM", game.winReason);
     }
   }
 

@@ -55,7 +55,7 @@ export interface GameState {
   redCardsLeft: number;
   blueCardsLeft: number;
   winner: Team | null;
-  winReason: "ALL_CARDS_REVEALED" | "ASSASSIN_REVEALED" | "FORFEIT" | null;
+  winReason: string | null;
   logs: GameLog[];
 }
 
