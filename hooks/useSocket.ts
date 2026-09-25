@@ -13,61 +13,69 @@ export function useSocket() {
   const socketRef = useRef<WebSocket | null>(null);
   const activeRoomCodeRef = useRef<string | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const playerIdRef = useRef<string>("");
 
-  // Helper to ensure valid playerId
+  // Initialize persistent player ID synchronously on first call
   const getOrInitPlayerId = useCallback(() => {
-    let pid = playerId;
-    if (!pid && typeof window !== "undefined") {
-      pid = sessionStorage.getItem("decypher_player_id") || "";
-      if (!pid) {
-        pid = Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
-        sessionStorage.setItem("decypher_player_id", pid);
-      }
-      setPlayerId(pid);
+    if (playerIdRef.current) return playerIdRef.current;
+    if (typeof window === "undefined") return "";
+    let pid = sessionStorage.getItem("decypher_player_id") || "";
+    if (!pid) {
+      pid = Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+      sessionStorage.setItem("decypher_player_id", pid);
     }
+    playerIdRef.current = pid;
+    setPlayerId(pid);
     return pid;
-  }, [playerId]);
+  }, []);
 
-  // Initialize persistent player ID
-  useEffect(() => {
-    getOrInitPlayerId();
-  }, [getOrInitPlayerId]);
+  // Send a raw JSON message on the current socket
+  const sendRaw = useCallback((msg: Record<string, any>) => {
+    const ws = socketRef.current;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(msg));
+      return true;
+    }
+    return false;
+  }, []);
 
-  // Connect STRICTLY to standard WebSocket server (Render/Railway/OCI/Local)
+  // Connect the WebSocket (only called once on mount, and on reconnect)
   const connectSocket = useCallback(
-    (roomCode: string = "lobby") => {
+    (roomCode: string) => {
       const pid = getOrInitPlayerId();
       if (!pid) return;
 
+      // Clean up any existing connection
       if (socketRef.current) {
-        try {
-          socketRef.current.close();
-        } catch {}
+        try { socketRef.current.close(); } catch {}
+        socketRef.current = null;
       }
-
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+        pingIntervalRef.current = null;
       }
 
-      activeRoomCodeRef.current = roomCode;
-
-      // STRICT WEBSOCKET MODE
       const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080";
-      console.log(`🚀 [Decyphergrid WS] Connecting STRICTLY to WebSockets at: ${wsUrl}`);
+      console.log(`🚀 [WS] Connecting to: ${wsUrl} for room: ${roomCode}`);
 
       try {
         const ws = new WebSocket(wsUrl);
         socketRef.current = ws;
 
-        let pingInterval: NodeJS.Timeout;
-
         ws.onopen = () => {
-          console.log("✅ [Decyphergrid WS] WebSocket connection established successfully!");
+          console.log("✅ [WS] Connected!");
           setIsConnected(true);
-          ws.send(JSON.stringify({ type: "register", roomCode, playerId: pid }));
-          
-          // Application-level ping to keep cloud load-balancers alive and sync room state
-          pingInterval = setInterval(() => {
+          // Register with whatever room we currently care about
+          const currentRoom = activeRoomCodeRef.current || roomCode;
+          ws.send(JSON.stringify({ type: "register", roomCode: currentRoom, playerId: pid }));
+
+          // Start application-level heartbeat
+          pingIntervalRef.current = setInterval(() => {
             if (ws.readyState === WebSocket.OPEN) {
               ws.send(JSON.stringify({ type: "ping", playerId: pid }));
             }
@@ -77,13 +85,11 @@ export function useSocket() {
         ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            console.log(`[WS RCV] Received: ${data.type}`, data);
             if ((data.type === "room_state" || data.type === "action_response") && data.state) {
-              console.log("[WS RCV] Triggering setRoomState with new state:", data.state);
               setRoomState(data.state);
               setIsRoomNotFound(false);
             } else if (data.error) {
-              console.warn(`[WS ERR] Received error: ${data.error}`);
+              console.warn(`[WS ERR] ${data.error}`);
               if (data.error === "Room not found") {
                 setIsRoomNotFound(true);
               } else {
@@ -95,62 +101,84 @@ export function useSocket() {
         };
 
         const handleDisconnect = (event?: any) => {
-          // Prevent multiple reconnection loops if socket ref changed
           if (socketRef.current !== ws) return;
-
-          console.warn("⚠️ [Decyphergrid WS] WebSocket connection dropped! Reason:", event?.code || "Unknown", "Reconnecting in 3s...");
+          console.warn("⚠️ [WS] Disconnected. Reconnecting in 3s...", event?.code);
           setIsConnected(false);
-          clearInterval(pingInterval);
-          
+          if (pingIntervalRef.current) {
+            clearInterval(pingIntervalRef.current);
+            pingIntervalRef.current = null;
+          }
+
           reconnectTimeoutRef.current = setTimeout(() => {
-            if (activeRoomCodeRef.current) {
-              connectSocket(activeRoomCodeRef.current);
-            }
+            const currentRoom = activeRoomCodeRef.current || "lobby";
+            connectSocket(currentRoom);
           }, 3000);
         };
 
         ws.onclose = handleDisconnect;
-        ws.onerror = (err) => {
-          // Use console.warn instead of console.error to prevent Next.js giant red error overlay
-          console.warn("⚠️ [Decyphergrid WS] WebSocket connection failed. Is the WS server running?");
+        ws.onerror = () => {
+          console.warn("⚠️ [WS] Connection failed.");
           handleDisconnect();
         };
       } catch (err) {
-        console.error("[useSocket] Connection initialization error:", err);
+        console.error("[useSocket] Connection error:", err);
       }
     },
     [getOrInitPlayerId]
   );
 
-  // Initial connection
+  // Connect once on mount — this is the ONLY place connectSocket is called automatically
   useEffect(() => {
+    const pid = getOrInitPlayerId();
+    if (!pid) return;
+
     connectSocket("lobby");
 
     return () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+      if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
       if (socketRef.current) {
-        try {
-          socketRef.current.close();
-        } catch {}
+        try { socketRef.current.close(); } catch {}
       }
     };
-  }, [connectSocket]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Execute Action (Strictly via WebSocket frame)
+  // Wait for the socket to be open
+  const waitForConnection = useCallback(async (): Promise<void> => {
+    if (socketRef.current?.readyState === WebSocket.OPEN) return;
+    return new Promise((resolve, reject) => {
+      let attempts = 0;
+      const interval = setInterval(() => {
+        attempts++;
+        if (socketRef.current?.readyState === WebSocket.OPEN) {
+          clearInterval(interval);
+          resolve();
+        } else if (attempts > 100) {
+          clearInterval(interval);
+          reject(new Error("WebSocket connection timeout"));
+        }
+      }, 50);
+    });
+  }, []);
+
+  // Send an action and re-register the socket for the correct room
   const sendAction = useCallback(
     async (actionPayload: any): Promise<any> => {
-      const pid = getOrInitPlayerId();
+      const pid = playerIdRef.current || getOrInitPlayerId();
       const payload = { ...actionPayload, playerId: pid };
 
       if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-        socketRef.current.send(
-          JSON.stringify({
-            type: "action",
-            ...payload,
-          })
-        );
+        // If the room code changed, re-register on the SAME socket (no reconnect!)
+        const actionRoom = payload.roomCode?.toUpperCase?.()?.trim?.();
+        if (actionRoom && actionRoom !== activeRoomCodeRef.current) {
+          activeRoomCodeRef.current = actionRoom;
+          socketRef.current.send(
+            JSON.stringify({ type: "register", roomCode: actionRoom, playerId: pid })
+          );
+        }
+
+        socketRef.current.send(JSON.stringify({ type: "action", ...payload }));
         return { success: true, roomCode: payload.roomCode };
       } else {
         const error = "Not connected to WebSocket server. Please wait or refresh.";
@@ -162,26 +190,9 @@ export function useSocket() {
     [getOrInitPlayerId]
   );
 
-  const waitForConnection = async (): Promise<void> => {
-    if (socketRef.current?.readyState === WebSocket.OPEN) return;
-    return new Promise((resolve, reject) => {
-      let attempts = 0;
-      const interval = setInterval(() => {
-        attempts++;
-        if (socketRef.current?.readyState === WebSocket.OPEN) {
-          clearInterval(interval);
-          resolve();
-        } else if (attempts > 100) { // 5 seconds timeout
-          clearInterval(interval);
-          reject(new Error("WebSocket connection timeout"));
-        }
-      }, 50);
-    });
-  };
-
   const createRoom = useCallback(
     async (playerName: string): Promise<string> => {
-      const pid = getOrInitPlayerId();
+      const pid = playerIdRef.current || getOrInitPlayerId();
       const chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
       let code = "";
       for (let i = 0; i < 6; i++) {
@@ -189,49 +200,43 @@ export function useSocket() {
       }
 
       activeRoomCodeRef.current = code;
-      connectSocket(code);
 
-      try {
-        await waitForConnection();
-        await sendAction({
-          action: "create_room",
-          playerName,
-          playerId: pid,
-          roomCode: code,
-        });
-      } catch (err) {
-        console.error("Failed to create room:", err);
-        throw err;
-      }
+      // Re-register the existing socket for the new room code
+      await waitForConnection();
+      sendRaw({ type: "register", roomCode: code, playerId: pid });
+
+      await sendAction({
+        action: "create_room",
+        playerName,
+        playerId: pid,
+        roomCode: code,
+      });
 
       return code;
     },
-    [connectSocket, getOrInitPlayerId, sendAction]
+    [getOrInitPlayerId, sendAction, sendRaw, waitForConnection]
   );
 
   const joinRoom = useCallback(
     async (roomCode: string, playerName: string): Promise<string> => {
-      const pid = getOrInitPlayerId();
+      const pid = playerIdRef.current || getOrInitPlayerId();
       const code = roomCode.toUpperCase().trim();
       activeRoomCodeRef.current = code;
-      connectSocket(code);
-      
-      try {
-        await waitForConnection();
-        await sendAction({
-          action: "join_room",
-          roomCode: code,
-          playerName,
-          playerId: pid,
-        });
-      } catch (err) {
-        console.error("Failed to join room:", err);
-        throw err;
-      }
-      
+
+      // Re-register the existing socket for this room code
+      await waitForConnection();
+      sendRaw({ type: "register", roomCode: code, playerId: pid });
+
+      await sendAction({
+        action: "join_room",
+        roomCode: code,
+        playerName,
+        playerId: pid,
+      });
+
       return code;
     },
-    [connectSocket, getOrInitPlayerId, sendAction]
+    [getOrInitPlayerId, sendAction, sendRaw, waitForConnection]
   );
 
   const setTeamAndRole = useCallback(
