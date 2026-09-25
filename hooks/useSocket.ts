@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import PartySocket from "partysocket";
 import { PublicRoomState, Team, Role } from "@/types/game";
 
 export function useSocket() {
@@ -10,10 +9,9 @@ export function useSocket() {
   const [playerId, setPlayerId] = useState<string>("");
   const [isConnected, setIsConnected] = useState<boolean>(false);
 
-  const partySocketRef = useRef<PartySocket | WebSocket | null>(null);
+  const socketRef = useRef<WebSocket | null>(null);
   const activeRoomCodeRef = useRef<string | null>(null);
-  const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const lastStateHashRef = useRef<string>("");
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Helper to ensure valid playerId
   const getOrInitPlayerId = useCallback(() => {
@@ -34,90 +32,76 @@ export function useSocket() {
     getOrInitPlayerId();
   }, [getOrInitPlayerId]);
 
-  // Connect to WS Server / PartyKit / Local fallback
+  // Connect STRICTLY to standard WebSocket server (Render/Railway/OCI/Local)
   const connectSocket = useCallback(
     (roomCode: string = "lobby") => {
       const pid = getOrInitPlayerId();
       if (!pid) return;
 
-      if (partySocketRef.current) {
+      if (socketRef.current) {
         try {
-          partySocketRef.current.close();
+          socketRef.current.close();
         } catch {}
+      }
+
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
       }
 
       activeRoomCodeRef.current = roomCode;
 
-      const wsCustomUrl = process.env.NEXT_PUBLIC_WS_URL;
-      const partyHost = process.env.NEXT_PUBLIC_PARTYKIT_HOST;
-      const isLocal =
-        typeof window !== "undefined" &&
-        (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+      // STRICT WEBSOCKET MODE
+      const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080";
+      console.log(`🚀 [Decyphergrid WS] Connecting STRICTLY to WebSockets at: ${wsUrl}`);
 
       try {
-        if (wsCustomUrl || (isLocal && !partyHost)) {
-          // Standard WebSocket Mode (Render / Railway / OCI / Local wsServer)
-          const targetUrl = wsCustomUrl || "ws://localhost:8080";
-          const ws = new WebSocket(targetUrl);
-          partySocketRef.current = ws;
+        const ws = new WebSocket(wsUrl);
+        socketRef.current = ws;
 
-          ws.onopen = () => {
-            setIsConnected(true);
-            ws.send(JSON.stringify({ type: "register", roomCode, playerId: pid }));
-          };
-
-          ws.onmessage = (event) => {
-            try {
-              const data = JSON.parse(event.data);
-              if ((data.type === "room_state" || data.type === "action_response") && data.state) {
-                setRoomState(data.state);
-              } else if (data.error) {
-                setErrorMsg(data.error);
-                setTimeout(() => setErrorMsg(null), 4000);
-              }
-            } catch {}
-          };
-
-          ws.onclose = () => setIsConnected(false);
-          ws.onerror = () => setIsConnected(false);
-        } else if (partyHost) {
-          // PartyKit Mode
-          const socket = new PartySocket({
-            host: partyHost,
-            room: roomCode.toLowerCase(),
-            query: { playerId: pid },
-          });
-
-          partySocketRef.current = socket;
-
-          socket.addEventListener("open", () => {
-            setIsConnected(true);
-            socket.send(JSON.stringify({ type: "register", roomCode, playerId: pid }));
-          });
-
-          socket.addEventListener("message", (event) => {
-            try {
-              const data = JSON.parse(event.data);
-              if ((data.type === "room_state" || data.type === "action_response") && data.state) {
-                setRoomState(data.state);
-              } else if (data.error) {
-                setErrorMsg(data.error);
-                setTimeout(() => setErrorMsg(null), 4000);
-              }
-            } catch {}
-          });
-
-          socket.addEventListener("close", () => setIsConnected(false));
-          socket.addEventListener("error", () => setIsConnected(false));
-        } else {
-          // Vercel Serverless HTTP Mode
+        ws.onopen = () => {
+          console.log("✅ [Decyphergrid WS] WebSocket connection established successfully!");
           setIsConnected(true);
-        }
+          ws.send(JSON.stringify({ type: "register", roomCode, playerId: pid }));
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if ((data.type === "room_state" || data.type === "action_response") && data.state) {
+              setRoomState(data.state);
+            } else if (data.error) {
+              setErrorMsg(data.error);
+              setTimeout(() => setErrorMsg(null), 4000);
+            }
+          } catch {}
+        };
+
+        const handleDisconnect = () => {
+          // Prevent multiple reconnection loops if socket ref changed
+          if (socketRef.current !== ws) return;
+
+          if (isConnected) {
+            console.warn("⚠️ [Decyphergrid WS] WebSocket connection dropped. Reconnecting in 3s...");
+          }
+          setIsConnected(false);
+          
+          reconnectTimeoutRef.current = setTimeout(() => {
+            if (activeRoomCodeRef.current) {
+              connectSocket(activeRoomCodeRef.current);
+            }
+          }, 3000);
+        };
+
+        ws.onclose = handleDisconnect;
+        ws.onerror = (err) => {
+          console.error("❌ [Decyphergrid WS] WebSocket error:", err);
+          handleDisconnect();
+        };
       } catch (err) {
-        console.error("[useSocket] Connection error:", err);
+        console.error("[useSocket] Connection initialization error:", err);
       }
     },
-    [getOrInitPlayerId]
+    [getOrInitPlayerId, isConnected]
   );
 
   // Initial connection
@@ -125,85 +109,36 @@ export function useSocket() {
     connectSocket("lobby");
 
     return () => {
-      if (partySocketRef.current) {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (socketRef.current) {
         try {
-          partySocketRef.current.close();
+          socketRef.current.close();
         } catch {}
       }
     };
   }, [connectSocket]);
 
-  // Fallback Polling (only runs if WS is not active)
-  useEffect(() => {
-    if (!playerId) return;
-
-    const poll = async () => {
-      if (!activeRoomCodeRef.current || activeRoomCodeRef.current === "lobby") return;
-      if (isConnected && partySocketRef.current?.readyState === WebSocket.OPEN) return;
-
-      try {
-        const res = await fetch("/api/game/action", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "get_state",
-            roomCode: activeRoomCodeRef.current,
-            playerId,
-          }),
-        });
-        const data = await res.json();
-        if (data.success && data.state) {
-          const stateHash = JSON.stringify(data.state);
-          if (stateHash !== lastStateHashRef.current) {
-            lastStateHashRef.current = stateHash;
-            setRoomState(data.state);
-          }
-        }
-      } catch {}
-    };
-
-    pollTimerRef.current = setInterval(poll, 1500);
-
-    return () => {
-      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-    };
-  }, [playerId, isConnected]);
-
-  // Execute Action (WS first, fallback to HTTP API)
+  // Execute Action (Strictly via WebSocket frame)
   const sendAction = useCallback(
     async (actionPayload: any): Promise<any> => {
       const pid = getOrInitPlayerId();
       const payload = { ...actionPayload, playerId: pid };
 
-      if (partySocketRef.current && partySocketRef.current.readyState === WebSocket.OPEN) {
-        partySocketRef.current.send(
+      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.send(
           JSON.stringify({
             type: "action",
             ...payload,
           })
         );
-        return { success: true };
-      }
-
-      // HTTP API Fallback
-      try {
-        const res = await fetch("/api/game/action", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        if (!data.success) {
-          throw new Error(data.error || "Action failed");
-        }
-        if (data.state) {
-          setRoomState(data.state);
-        }
-        return data;
-      } catch (err: any) {
-        setErrorMsg(err.message || "Action failed");
+        return { success: true, roomCode: payload.roomCode };
+      } else {
+        const error = "Not connected to WebSocket server. Please wait or refresh.";
+        setErrorMsg(error);
         setTimeout(() => setErrorMsg(null), 4000);
-        throw err;
+        throw new Error(error);
       }
     },
     [getOrInitPlayerId]
@@ -212,17 +147,25 @@ export function useSocket() {
   const createRoom = useCallback(
     async (playerName: string): Promise<string> => {
       const pid = getOrInitPlayerId();
-      const data = await sendAction({
-        action: "create_room",
-        playerName,
-        playerId: pid,
-      });
-      const roomCode = data.roomCode;
-      if (roomCode) {
-        activeRoomCodeRef.current = roomCode;
-        connectSocket(roomCode);
+      const chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+      let code = "";
+      for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
       }
-      return roomCode;
+
+      activeRoomCodeRef.current = code;
+      connectSocket(code);
+
+      setTimeout(() => {
+        sendAction({
+          action: "create_room",
+          playerName,
+          playerId: pid,
+          roomCode: code,
+        }).catch(() => {});
+      }, 500);
+
+      return code;
     },
     [connectSocket, getOrInitPlayerId, sendAction]
   );
@@ -233,13 +176,17 @@ export function useSocket() {
       const code = roomCode.toUpperCase().trim();
       activeRoomCodeRef.current = code;
       connectSocket(code);
-      const data = await sendAction({
-        action: "join_room",
-        roomCode: code,
-        playerName,
-        playerId: pid,
-      });
-      return data.roomCode || code;
+      
+      setTimeout(() => {
+        sendAction({
+          action: "join_room",
+          roomCode: code,
+          playerName,
+          playerId: pid,
+        }).catch(() => {});
+      }, 500);
+      
+      return code;
     },
     [connectSocket, getOrInitPlayerId, sendAction]
   );
