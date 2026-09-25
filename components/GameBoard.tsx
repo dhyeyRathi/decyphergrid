@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Share2, Check, HelpCircle, User, X } from "lucide-react";
+import { Share2, Check, HelpCircle, User, X, LogOut } from "lucide-react";
 import { PublicRoomState, PublicCard, CardType, GameLog as GameLogType } from "@/types/game";
 import { sounds } from "@/lib/soundEffects";
 import { copyToClipboard } from "@/lib/clipboard";
@@ -114,6 +114,27 @@ export default function GameBoard({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Play sounds when cards are newly revealed
+  const prevCardsRef = useRef<PublicCard[]>(game.cards);
+  useEffect(() => {
+    const newlyRevealed = game.cards.filter(c => {
+      const oldC = prevCardsRef.current.find(old => old.id === c.id);
+      return c.revealed && oldC && !oldC.revealed;
+    });
+
+    if (newlyRevealed.length > 0) {
+      const c = newlyRevealed[0];
+      if (c.type === "ASSASSIN") {
+        sounds.playAssassin();
+      } else if (c.type === "RED" || c.type === "BLUE") {
+        sounds.playCorrect();
+      } else {
+        sounds.playWrong();
+      }
+    }
+    prevCardsRef.current = game.cards;
+  }, [game.cards]);
+
   const currentTeamColor =
     game.currentTeam === "RED" ? "text-[#B85C5C]" : "text-[#52759B]";
 
@@ -122,13 +143,13 @@ export default function GameBoard({
       {/* ================= TOP PANEL (MOBILE < lg) / LEFT SIDEBAR (DESKTOP ≥ lg) ================= */}
       <div className="w-full lg:w-80 xl:w-96 bg-[#171A20] border-b lg:border-b-0 lg:border-r border-[#303642] p-2 sm:p-3 lg:p-4 flex flex-col justify-start shrink-0 gap-2 sm:gap-3 lg:max-h-full overflow-y-auto no-scrollbar z-10">
         {/* Brand & Room Header */}
-        <div className="flex items-center justify-between pb-2 border-b border-[#303642]">
-          <div className="flex items-center space-x-2">
-            <h1 className="text-base sm:text-lg font-black tracking-widest text-[#F1F0EC] uppercase font-mono">
+        <div className="flex items-center justify-between pb-2 border-b border-[#303642] gap-1">
+          <div className="flex items-center space-x-2 shrink-0">
+            <h1 className="text-sm sm:text-lg font-black tracking-widest text-[#F1F0EC] uppercase font-mono min-w-0">
               DECYPHER<span className="text-[#A7A9AD]">GRID</span>
             </h1>
 
-            <div className="flex items-center space-x-1.5 px-2 py-0.5 bg-[#111318] border border-[#303642] rounded-lg text-xs font-mono">
+            <div className="hidden sm:flex items-center space-x-1.5 px-2 py-0.5 bg-[#111318] border border-[#303642] rounded-lg text-xs font-mono shrink-0">
               <span className="font-bold text-[#F1F0EC]">{roomState.code}</span>
               <button
                 onClick={copyShareLink}
@@ -140,9 +161,9 @@ export default function GameBoard({
             </div>
           </div>
 
-          <div className="flex items-center space-x-3 text-xs font-mono">
+          <div className="flex items-center space-x-2 sm:space-x-3 text-xs font-mono min-w-0 shrink-0">
             {playerName && (
-              <span className="text-[11px] text-[#A7A9AD] hidden sm:inline truncate max-w-[120px]">
+              <span className="text-[11px] text-[#A7A9AD] truncate max-w-[60px] sm:max-w-[120px]">
                 {playerName}
               </span>
             )}
@@ -150,20 +171,21 @@ export default function GameBoard({
             {onOpenRules && (
               <button
                 onClick={onOpenRules}
-                className="flex items-center space-x-1 text-xs font-mono text-[#A7A9AD] hover:text-[#F1F0EC] transition-colors"
+                className="flex items-center space-x-1 text-xs font-mono text-[#A7A9AD] hover:text-[#F1F0EC] transition-colors shrink-0"
               >
                 <HelpCircle className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Rules</span>
+                <span className="hidden md:inline">Rules</span>
               </button>
             )}
 
             {onLeaveGame && (
               <button
                 onClick={onLeaveGame}
-                className="flex items-center space-x-1 text-xs font-mono text-[#A7A9AD] hover:text-[#B85C5C] transition-colors ml-3"
+                className="flex items-center space-x-1 text-xs font-mono text-[#A7A9AD] hover:text-[#B85C5C] transition-colors ml-1 sm:ml-3 shrink-0"
+                aria-label="Leave Game"
               >
-                <X className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Leave</span>
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Leave</span>
               </button>
             )}
           </div>
