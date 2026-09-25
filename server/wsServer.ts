@@ -43,8 +43,8 @@ const wss = new WebSocketServer({ server });
 /**
  * Broadcast updated room state to all connected players in the room
  */
-async function broadcastRoomState(roomCode: string) {
-  const room = await getRoom(roomCode);
+async function broadcastRoomState(roomCode: string, roomObj?: any) {
+  const room = roomObj || await getRoom(roomCode);
   if (!room) return;
 
   for (const player of room.players) {
@@ -145,7 +145,7 @@ wss.on("connection", (ws: WebSocket) => {
         // --- CREATE ROOM ---
         if (action === "create_room") {
           const { room, player } = createRoomLogic(playerName, playerId, code);
-          await saveRoom(room);
+          saveRoom(room).catch(console.error);
 
           clientPlayerId = player.id;
           clientRoomCode = room.code;
@@ -161,7 +161,7 @@ wss.on("connection", (ws: WebSocket) => {
               state,
             })
           );
-          await broadcastRoomState(room.code);
+          broadcastRoomState(room.code, room);
           return;
         }
 
@@ -179,7 +179,7 @@ wss.on("connection", (ws: WebSocket) => {
             return;
           }
           const { room: updatedRoom, player } = joinRoomLogic(room, playerName, playerId);
-          await saveRoom(updatedRoom);
+          saveRoom(updatedRoom).catch(console.error);
 
           clientPlayerId = player.id;
           clientRoomCode = code;
@@ -195,7 +195,7 @@ wss.on("connection", (ws: WebSocket) => {
               state,
             })
           );
-          await broadcastRoomState(code);
+          broadcastRoomState(code, updatedRoom);
           return;
         }
 
@@ -234,8 +234,8 @@ wss.on("connection", (ws: WebSocket) => {
         }
 
         // Save & Broadcast
-        await saveRoom(room);
-        await broadcastRoomState(code);
+        saveRoom(room).catch(console.error);
+        broadcastRoomState(code, room);
 
         const state = serializeRoomForPlayer(room, playerId || "");
         ws.send(
