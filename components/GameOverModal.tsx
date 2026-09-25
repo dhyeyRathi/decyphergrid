@@ -7,11 +7,13 @@ import { sounds } from "@/lib/soundEffects";
 
 interface GameOverModalProps {
   roomState: PublicRoomState;
+  currentPlayerId: string;
   onPlayAgain: () => void;
 }
 
 export default function GameOverModal({
   roomState,
+  currentPlayerId,
   onPlayAgain,
 }: GameOverModalProps) {
   const [dismissed, setDismissed] = useState(false);
@@ -48,14 +50,21 @@ export default function GameOverModal({
     return () => clearTimeout(timer);
   }, [isFinished, roomState]);
 
+  // Determine current player's team
+  const currentPlayer = roomState.players.find((p) => p.id === currentPlayerId);
+  const playerTeam = currentPlayer?.team || null;
+  const isPlayerWinner = playerTeam === game?.winner;
+
   useEffect(() => {
     if (showModal && isFinished) {
-      sounds.playVictory();
-      confetti({
-        particleCount: 80,
-        spread: 60,
-        origin: { y: 0.6 },
-      });
+      if (isPlayerWinner) {
+        sounds.playVictory();
+        confetti({
+          particleCount: 80,
+          spread: 60,
+          origin: { y: 0.6 },
+        });
+      }
     }
   }, [showModal]);
 
@@ -74,14 +83,19 @@ export default function GameOverModal({
           </span>
           <h2
             className={`text-3xl font-black font-mono tracking-wider uppercase mt-2 ${
-              isRedWinner ? "text-[#B85C5C]" : "text-[#52759B]"
+              isPlayerWinner ? "text-emerald-400" : "text-red-400"
             }`}
           >
-            {winner} TEAM WINS!
+            {isPlayerWinner ? "YOU WIN! 🎉" : "YOU LOSE 💀"}
           </h2>
+          <p className={`text-sm font-mono font-bold uppercase mt-1 ${
+            isRedWinner ? "text-[#B85C5C]" : "text-[#52759B]"
+          }`}>
+            {winner} TEAM WINS
+          </p>
           <p className="text-xs text-[#A7A9AD] font-mono mt-2 leading-relaxed">
             {winReason === "ASSASSIN_REVEALED"
-              ? "The opposing team revealed the ASSASSIN card!"
+              ? `${winner === "RED" ? "BLUE" : "RED"} team revealed the ASSASSIN card!`
               : `${winner} team decyphered all their target words.`}
           </p>
         </div>

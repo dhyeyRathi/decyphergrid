@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Share2, Check, HelpCircle, User, X } from "lucide-react";
 import { PublicRoomState, PublicCard, CardType, GameLog as GameLogType } from "@/types/game";
 import { sounds } from "@/lib/soundEffects";
+import { copyToClipboard } from "@/lib/clipboard";
 
 // Deterministic artwork image assignment per card ID & team type
 export function getCardImage(cardId: string, type?: CardType): string {
@@ -99,9 +100,9 @@ export default function GameBoard({
     onSelectCard(card.id);
   };
 
-  const copyShareLink = () => {
+  const copyShareLink = async () => {
     const url = window.location.href;
-    navigator.clipboard.writeText(url);
+    await copyToClipboard(url);
     setCopied(true);
     sounds.playCardClick();
     setTimeout(() => setCopied(false), 2000);

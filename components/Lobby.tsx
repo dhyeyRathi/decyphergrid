@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Share2, Check, UserX } from "lucide-react";
 import { PublicRoomState, Team, Role, Player } from "@/types/game";
 import { sounds } from "@/lib/soundEffects";
+import { copyToClipboard } from "@/lib/clipboard";
 
 interface LobbyProps {
   roomState: PublicRoomState;
@@ -44,9 +45,9 @@ export default function Lobby({
   const canStartGame =
     hasRedSpymaster && hasRedOperative && hasBlueSpymaster && hasBlueOperative;
 
-  const copyShareLink = () => {
+  const copyShareLink = async () => {
     const url = window.location.href;
-    navigator.clipboard.writeText(url);
+    await copyToClipboard(url);
     setCopied(true);
     sounds.playCardClick();
     setTimeout(() => setCopied(false), 2000);

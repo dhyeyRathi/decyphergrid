@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Volume2, VolumeX, Copy, Check } from "lucide-react";
 import { sounds } from "@/lib/soundEffects";
+import { copyToClipboard } from "@/lib/clipboard";
 import { PublicRoomState } from "@/types/game";
 
 interface HeaderProps {
@@ -34,10 +35,10 @@ export default function Header({
     if (sounds.enabled) sounds.playCardClick();
   };
 
-  const copyRoomLink = () => {
+  const copyRoomLink = async () => {
     if (!roomState?.code) return;
     const url = `${window.location.origin}/game/${roomState.code}`;
-    navigator.clipboard.writeText(url);
+    await copyToClipboard(url);
     setCopied(true);
     sounds.playCardClick();
     setTimeout(() => setCopied(false), 2000);

@@ -165,6 +165,7 @@ export default function GameRoomPage({ params }: PageProps) {
 
           <GameOverModal
             roomState={roomState}
+            currentPlayerId={playerId}
             onPlayAgain={() => playAgain(roomCode)}
           />
         </div>

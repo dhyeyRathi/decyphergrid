@@ -1,16 +1,19 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import PartySocket from "partysocket";
 import { PublicRoomState, Team, Role } from "@/types/game";
 
 export function useSocket() {
-  const [isConnected, setIsConnected] = useState(true);
   const [roomState, setRoomState] = useState<PublicRoomState | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [playerId, setPlayerId] = useState<string>("");
-  const wsRef = useRef<WebSocket | null>(null);
+  const [isConnected, setIsConnected] = useState<boolean>(false);
+
+  const partySocketRef = useRef<PartySocket | WebSocket | null>(null);
   const activeRoomCodeRef = useRef<string | null>(null);
-  const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastStateHashRef = useRef<string>("");
 
   // Helper to ensure valid playerId
   const getOrInitPlayerId = useCallback(() => {
@@ -26,87 +29,120 @@ export function useSocket() {
     return pid;
   }, [playerId]);
 
-  // Initialize or retrieve persistent player ID
+  // Initialize persistent player ID
   useEffect(() => {
     getOrInitPlayerId();
   }, [getOrInitPlayerId]);
 
-  // Connect native browser WebSocket to Vercel WebSocket endpoint
-  const connectNativeWebSocket = useCallback(() => {
-    if (typeof window === "undefined" || !playerId) return;
+  // Connect to WS Server / PartyKit / Local fallback
+  const connectSocket = useCallback(
+    (roomCode: string = "lobby") => {
+      const pid = getOrInitPlayerId();
+      if (!pid) return;
 
-    try {
-      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${protocol}//${window.location.host}/api/ws`;
-
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
-
-      ws.onopen = () => {
-        console.log("[Vercel Native WS] Connected");
-        setIsConnected(true);
-
-        // Send identity / sync request if currently in a room
-        if (activeRoomCodeRef.current) {
-          ws.send(
-            JSON.stringify({
-              type: "identify",
-              roomCode: activeRoomCodeRef.current,
-              playerId,
-            })
-          );
-        }
-      };
-
-      ws.onmessage = (event) => {
+      if (partySocketRef.current) {
         try {
-          const data = JSON.parse(event.data);
-          if (data.type === "room_state" && data.state) {
-            setRoomState(data.state);
-          }
-        } catch (e) {
-          // Non-JSON message ignore
+          partySocketRef.current.close();
+        } catch {}
+      }
+
+      activeRoomCodeRef.current = roomCode;
+
+      const wsCustomUrl = process.env.NEXT_PUBLIC_WS_URL;
+      const partyHost = process.env.NEXT_PUBLIC_PARTYKIT_HOST;
+      const isLocal =
+        typeof window !== "undefined" &&
+        (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+
+      try {
+        if (wsCustomUrl || (isLocal && !partyHost)) {
+          // Standard WebSocket Mode (Render / Railway / OCI / Local wsServer)
+          const targetUrl = wsCustomUrl || "ws://localhost:8080";
+          const ws = new WebSocket(targetUrl);
+          partySocketRef.current = ws;
+
+          ws.onopen = () => {
+            setIsConnected(true);
+            ws.send(JSON.stringify({ type: "register", roomCode, playerId: pid }));
+          };
+
+          ws.onmessage = (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              if ((data.type === "room_state" || data.type === "action_response") && data.state) {
+                setRoomState(data.state);
+              } else if (data.error) {
+                setErrorMsg(data.error);
+                setTimeout(() => setErrorMsg(null), 4000);
+              }
+            } catch {}
+          };
+
+          ws.onclose = () => setIsConnected(false);
+          ws.onerror = () => setIsConnected(false);
+        } else if (partyHost) {
+          // PartyKit Mode
+          const socket = new PartySocket({
+            host: partyHost,
+            room: roomCode.toLowerCase(),
+            query: { playerId: pid },
+          });
+
+          partySocketRef.current = socket;
+
+          socket.addEventListener("open", () => {
+            setIsConnected(true);
+            socket.send(JSON.stringify({ type: "register", roomCode, playerId: pid }));
+          });
+
+          socket.addEventListener("message", (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              if ((data.type === "room_state" || data.type === "action_response") && data.state) {
+                setRoomState(data.state);
+              } else if (data.error) {
+                setErrorMsg(data.error);
+                setTimeout(() => setErrorMsg(null), 4000);
+              }
+            } catch {}
+          });
+
+          socket.addEventListener("close", () => setIsConnected(false));
+          socket.addEventListener("error", () => setIsConnected(false));
+        } else {
+          // Vercel Serverless HTTP Mode
+          setIsConnected(true);
         }
-      };
+      } catch (err) {
+        console.error("[useSocket] Connection error:", err);
+      }
+    },
+    [getOrInitPlayerId]
+  );
 
-      ws.onclose = () => {
-        console.log("[Vercel Native WS] Disconnected. Reconnecting...");
-        setIsConnected(false);
-        wsRef.current = null;
-
-        // Auto reconnect after 2 seconds
-        if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-        reconnectTimerRef.current = setTimeout(() => {
-          connectNativeWebSocket();
-        }, 2000);
-      };
-
-      ws.onerror = (err) => {
-        console.log("[Vercel Native WS] Socket connection active/re-establishing");
-        setIsConnected(true); // Fallback active for polling/API actions
-      };
-    } catch (e) {
-      setIsConnected(true);
-    }
-  }, [playerId]);
-
+  // Initial connection
   useEffect(() => {
-    connectNativeWebSocket();
+    connectSocket("lobby");
+
     return () => {
-      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
+      if (partySocketRef.current) {
+        try {
+          partySocketRef.current.close();
+        } catch {}
       }
     };
-  }, [connectNativeWebSocket]);
+  }, [connectSocket]);
 
-  // Polling fallback — only runs when WebSocket is disconnected
+  // Fallback Polling (only runs if WS is not active)
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Only poll if WS is down and we're in an active room
-      if (!isConnected && activeRoomCodeRef.current && playerId) {
-        fetch("/api/game/action", {
+    if (!playerId) return;
+
+    const poll = async () => {
+      if (!activeRoomCodeRef.current || activeRoomCodeRef.current === "lobby") return;
+      if (isConnected && partySocketRef.current?.readyState === WebSocket.OPEN) return;
+
+      try {
+        const res = await fetch("/api/game/action", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -114,28 +150,47 @@ export function useSocket() {
             roomCode: activeRoomCodeRef.current,
             playerId,
           }),
-        })
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.success && data.state) {
-              setRoomState(data.state);
-            }
-          })
-          .catch(() => {});
-      }
-    }, 10000);
+        });
+        const data = await res.json();
+        if (data.success && data.state) {
+          const stateHash = JSON.stringify(data.state);
+          if (stateHash !== lastStateHashRef.current) {
+            lastStateHashRef.current = stateHash;
+            setRoomState(data.state);
+          }
+        }
+      } catch {}
+    };
 
-    return () => clearInterval(interval);
+    pollTimerRef.current = setInterval(poll, 1500);
+
+    return () => {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    };
   }, [playerId, isConnected]);
 
-  // Execute authoritative action
+  // Execute Action (WS first, fallback to HTTP API)
   const sendAction = useCallback(
     async (actionPayload: any): Promise<any> => {
+      const pid = getOrInitPlayerId();
+      const payload = { ...actionPayload, playerId: pid };
+
+      if (partySocketRef.current && partySocketRef.current.readyState === WebSocket.OPEN) {
+        partySocketRef.current.send(
+          JSON.stringify({
+            type: "action",
+            ...payload,
+          })
+        );
+        return { success: true };
+      }
+
+      // HTTP API Fallback
       try {
         const res = await fetch("/api/game/action", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(actionPayload),
+          body: JSON.stringify(payload),
         });
         const data = await res.json();
         if (!data.success) {
@@ -151,7 +206,7 @@ export function useSocket() {
         throw err;
       }
     },
-    []
+    [getOrInitPlayerId]
   );
 
   const createRoom = useCallback(
@@ -162,32 +217,38 @@ export function useSocket() {
         playerName,
         playerId: pid,
       });
-      activeRoomCodeRef.current = data.roomCode;
-      return data.roomCode;
+      const roomCode = data.roomCode;
+      if (roomCode) {
+        activeRoomCodeRef.current = roomCode;
+        connectSocket(roomCode);
+      }
+      return roomCode;
     },
-    [getOrInitPlayerId, sendAction]
+    [connectSocket, getOrInitPlayerId, sendAction]
   );
 
   const joinRoom = useCallback(
     async (roomCode: string, playerName: string): Promise<string> => {
       const pid = getOrInitPlayerId();
-      activeRoomCodeRef.current = roomCode;
+      const code = roomCode.toUpperCase().trim();
+      activeRoomCodeRef.current = code;
+      connectSocket(code);
       const data = await sendAction({
         action: "join_room",
-        roomCode,
+        roomCode: code,
         playerName,
         playerId: pid,
       });
-      return data.roomCode;
+      return data.roomCode || code;
     },
-    [getOrInitPlayerId, sendAction]
+    [connectSocket, getOrInitPlayerId, sendAction]
   );
 
   const setTeamAndRole = useCallback(
     (roomCode: string, team: Team | null, role: Role | null) => {
-      sendAction({ action: "set_team_role", roomCode, playerId, team, role });
+      sendAction({ action: "set_team_role", roomCode, team, role });
     },
-    [playerId, sendAction]
+    [sendAction]
   );
 
   const randomizeTeams = useCallback(
@@ -213,23 +274,23 @@ export function useSocket() {
 
   const submitClue = useCallback(
     (roomCode: string, word: string, number: number) => {
-      sendAction({ action: "submit_clue", roomCode, playerId, word, number });
+      sendAction({ action: "submit_clue", roomCode, word, number });
     },
-    [playerId, sendAction]
+    [sendAction]
   );
 
   const selectCard = useCallback(
     (roomCode: string, cardId: string) => {
-      sendAction({ action: "select_card", roomCode, playerId, cardId });
+      sendAction({ action: "select_card", roomCode, cardId });
     },
-    [playerId, sendAction]
+    [sendAction]
   );
 
   const endTurn = useCallback(
     (roomCode: string) => {
-      sendAction({ action: "end_turn", roomCode, playerId });
+      sendAction({ action: "end_turn", roomCode });
     },
-    [playerId, sendAction]
+    [sendAction]
   );
 
   const playAgain = useCallback(
