@@ -273,8 +273,8 @@ export default function GameBoard({
       </div>
 
       {/* ================= CENTER PANEL: 5x5 CARDS GRID ================= */}
-      <div className="flex-1 min-h-0 w-full lg:h-full flex items-center justify-center p-2 sm:p-4 lg:p-6 overflow-hidden mx-auto">
-        <div className="grid grid-cols-5 gap-1.5 sm:gap-2.5 lg:gap-3.5 mx-auto w-full aspect-square max-w-[calc(100vh-190px)] sm:max-w-[calc(100vh-230px)] lg:max-w-[calc(100vh-100px)]">
+      <div className="flex-1 min-h-0 w-full lg:h-full flex items-center justify-center p-2 sm:p-4 lg:p-6 overflow-hidden mx-auto z-10" style={{ containerType: "size" }}>
+        <div className="grid grid-cols-5 gap-1.5 sm:gap-2.5 lg:gap-3.5 mx-auto" style={{ width: "min(100cqmin, 100%)", height: "min(100cqmin, 100%)" }}>
           {game.cards.map((card) => (
             <GridCardItem
               key={card.id}
@@ -289,7 +289,7 @@ export default function GameBoard({
       </div>
 
       {/* ================= BOTTOM PANEL (MOBILE < lg) / RIGHT SIDEBAR (DESKTOP ≥ lg): MATCH LOG ================= */}
-      <div className="w-full lg:w-80 xl:w-96 flex-1 min-h-[140px] lg:flex-none lg:h-full bg-[#171A20] border-t lg:border-t-0 lg:border-l border-[#303642] p-2.5 sm:p-4 flex flex-col overflow-hidden">
+      <div className="w-full lg:w-80 xl:w-96 shrink-0 h-32 sm:h-36 lg:flex-none lg:h-full bg-[#171A20] border-t lg:border-t-0 lg:border-l border-[#303642] p-2.5 sm:p-4 flex flex-col overflow-hidden z-10">
         <div className="text-[11px] sm:text-xs font-mono font-bold uppercase tracking-wider text-[#A7A9AD] mb-1.5 pb-1 border-b border-[#303642] flex items-center justify-between shrink-0">
           <span>Match Activity Log</span>
           <span className="text-[10px] text-[#6F737B]">{game.logs.length} Events</span>

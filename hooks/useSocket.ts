@@ -77,10 +77,13 @@ export function useSocket() {
         ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
+            console.log(`[WS RCV] Received: ${data.type}`, data);
             if ((data.type === "room_state" || data.type === "action_response") && data.state) {
+              console.log("[WS RCV] Triggering setRoomState with new state:", data.state);
               setRoomState(data.state);
               setIsRoomNotFound(false);
             } else if (data.error) {
+              console.warn(`[WS ERR] Received error: ${data.error}`);
               if (data.error === "Room not found") {
                 setIsRoomNotFound(true);
               } else {
@@ -91,11 +94,11 @@ export function useSocket() {
           } catch {}
         };
 
-        const handleDisconnect = () => {
+        const handleDisconnect = (event?: any) => {
           // Prevent multiple reconnection loops if socket ref changed
           if (socketRef.current !== ws) return;
 
-          console.warn("⚠️ [Decyphergrid WS] WebSocket connection dropped. Reconnecting in 3s...");
+          console.warn("⚠️ [Decyphergrid WS] WebSocket connection dropped! Reason:", event?.code || "Unknown", "Reconnecting in 3s...");
           setIsConnected(false);
           clearInterval(pingInterval);
           
