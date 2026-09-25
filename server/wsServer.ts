@@ -275,7 +275,10 @@ wss.on("connection", (ws: WebSocket) => {
 
   ws.on("close", () => {
     if (clientPlayerId) {
-      clients.delete(clientPlayerId);
+      const currentClient = clients.get(clientPlayerId);
+      if (currentClient && currentClient.ws === ws) {
+        clients.delete(clientPlayerId);
+      }
     }
   });
 });
