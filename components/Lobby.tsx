@@ -46,8 +46,7 @@ export default function Lobby({
     hasRedSpymaster && hasRedOperative && hasBlueSpymaster && hasBlueOperative;
 
   const copyShareLink = async () => {
-    const url = window.location.href;
-    await copyToClipboard(url);
+    await copyToClipboard(roomState.code);
     setCopied(true);
     sounds.playCardClick();
     setTimeout(() => setCopied(false), 2000);

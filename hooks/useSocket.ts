@@ -80,9 +80,7 @@ export function useSocket() {
           // Prevent multiple reconnection loops if socket ref changed
           if (socketRef.current !== ws) return;
 
-          if (isConnected) {
-            console.warn("⚠️ [Decyphergrid WS] WebSocket connection dropped. Reconnecting in 3s...");
-          }
+          console.warn("⚠️ [Decyphergrid WS] WebSocket connection dropped. Reconnecting in 3s...");
           setIsConnected(false);
           
           reconnectTimeoutRef.current = setTimeout(() => {
@@ -102,7 +100,7 @@ export function useSocket() {
         console.error("[useSocket] Connection initialization error:", err);
       }
     },
-    [getOrInitPlayerId, isConnected]
+    [getOrInitPlayerId]
   );
 
   // Initial connection

@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:ws": "tsx server/wsServer.ts",
-    "start:ws": "tsx server/wsServer.ts",
+    "dev:ws": "tsx --env-file=.env.local server/wsServer.ts",
+    "start:ws": "tsx --env-file=.env.local server/wsServer.ts",
     "dev:party": "partykit dev",
     "deploy:party": "partykit deploy",
     "build": "next build",
