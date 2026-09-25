@@ -140,9 +140,11 @@ wss.on("connection", (ws: WebSocket) => {
           });
         }
 
+        const code = (clientRoomCode || String(roomCode) || "").toUpperCase().trim();
+
         // --- CREATE ROOM ---
         if (action === "create_room") {
-          const { room, player } = createRoomLogic(playerName, playerId);
+          const { room, player } = createRoomLogic(playerName, playerId, code);
           await saveRoom(room);
 
           clientPlayerId = player.id;
@@ -168,7 +170,6 @@ wss.on("connection", (ws: WebSocket) => {
           return;
         }
 
-        const code = (clientRoomCode || String(roomCode) || "").toUpperCase().trim();
         let room = await getRoom(code);
 
         // --- JOIN ROOM ---

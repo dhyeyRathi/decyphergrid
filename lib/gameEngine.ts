@@ -68,8 +68,8 @@ function addLog(
 /**
  * CREATE ROOM LOGIC
  */
-export function createRoomLogic(adminName: string, customPlayerId?: string): { room: Room; player: Player } {
-  const code = generateRoomCode();
+export function createRoomLogic(adminName: string, customPlayerId?: string, customRoomCode?: string): { room: Room; player: Player } {
+  const code = customRoomCode || generateRoomCode();
   const playerId = customPlayerId || generateId();
   const cleanName = sanitizeName(adminName);
 
