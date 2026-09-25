@@ -94,7 +94,8 @@ export function useSocket() {
 
         ws.onclose = handleDisconnect;
         ws.onerror = (err) => {
-          console.error("❌ [Decyphergrid WS] WebSocket error:", err);
+          // Use console.warn instead of console.error to prevent Next.js giant red error overlay
+          console.warn("⚠️ [Decyphergrid WS] WebSocket connection failed. Is the WS server running?");
           handleDisconnect();
         };
       } catch (err) {
@@ -144,6 +145,23 @@ export function useSocket() {
     [getOrInitPlayerId]
   );
 
+  const waitForConnection = async (): Promise<void> => {
+    if (socketRef.current?.readyState === WebSocket.OPEN) return;
+    return new Promise((resolve, reject) => {
+      let attempts = 0;
+      const interval = setInterval(() => {
+        attempts++;
+        if (socketRef.current?.readyState === WebSocket.OPEN) {
+          clearInterval(interval);
+          resolve();
+        } else if (attempts > 100) { // 5 seconds timeout
+          clearInterval(interval);
+          reject(new Error("WebSocket connection timeout"));
+        }
+      }, 50);
+    });
+  };
+
   const createRoom = useCallback(
     async (playerName: string): Promise<string> => {
       const pid = getOrInitPlayerId();
@@ -156,14 +174,18 @@ export function useSocket() {
       activeRoomCodeRef.current = code;
       connectSocket(code);
 
-      setTimeout(() => {
-        sendAction({
+      try {
+        await waitForConnection();
+        await sendAction({
           action: "create_room",
           playerName,
           playerId: pid,
           roomCode: code,
-        }).catch(() => {});
-      }, 500);
+        });
+      } catch (err) {
+        console.error("Failed to create room:", err);
+        throw err;
+      }
 
       return code;
     },
@@ -177,14 +199,18 @@ export function useSocket() {
       activeRoomCodeRef.current = code;
       connectSocket(code);
       
-      setTimeout(() => {
-        sendAction({
+      try {
+        await waitForConnection();
+        await sendAction({
           action: "join_room",
           roomCode: code,
           playerName,
           playerId: pid,
-        }).catch(() => {});
-      }, 500);
+        });
+      } catch (err) {
+        console.error("Failed to join room:", err);
+        throw err;
+      }
       
       return code;
     },

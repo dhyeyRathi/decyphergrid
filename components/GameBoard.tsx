@@ -173,6 +173,19 @@ export default function GameBoard({
           </div>
         </div>
 
+        {/* Player Role Indicator */}
+        {player && (
+          <div
+            className={`px-3 py-2 rounded-lg text-center font-bold text-xs uppercase tracking-widest border ${
+              player.team === "RED"
+                ? "bg-[#B85C5C]/10 border-[#B85C5C]/30 text-[#B85C5C]"
+                : "bg-[#52759B]/10 border-[#52759B]/30 text-[#52759B]"
+            }`}
+          >
+            YOU ARE {player.team} {player.role === "SPYMASTER" ? "SPY MASTER" : "OPERATIVE"}
+          </div>
+        )}
+
         {/* Clue Control Box */}
         <div className="bg-[#111318] border border-[#303642] p-2.5 rounded-xl font-mono text-xs">
           {canSubmitClue ? (
@@ -251,8 +264,8 @@ export default function GameBoard({
       </div>
 
       {/* ================= CENTER PANEL: 5x5 CARDS GRID ================= */}
-      <div className="flex-1 w-full lg:h-full flex items-center justify-center p-2 sm:p-4 lg:p-6 overflow-hidden max-w-[550px] lg:max-w-none mx-auto">
-        <div className="grid grid-cols-5 aspect-square w-full lg:max-w-[calc(100vh-4rem)] lg:max-h-[calc(100vh-4rem)] gap-1.5 sm:gap-2.5 lg:gap-3.5">
+      <div className="flex-1 min-h-0 w-full lg:h-full flex items-center justify-center p-2 sm:p-4 lg:p-6 overflow-hidden mx-auto">
+        <div className="grid grid-cols-5 aspect-square w-full max-w-[calc(100vh-20rem)] sm:max-w-[calc(100vh-26rem)] lg:max-w-[calc(100vh-4rem)] lg:max-h-[calc(100vh-4rem)] gap-1.5 sm:gap-2.5 lg:gap-3.5 mx-auto">
           {game.cards.map((card) => (
             <GridCardItem
               key={card.id}
@@ -267,7 +280,7 @@ export default function GameBoard({
       </div>
 
       {/* ================= BOTTOM PANEL (MOBILE < lg) / RIGHT SIDEBAR (DESKTOP ≥ lg): MATCH LOG ================= */}
-      <div className="w-full lg:w-80 xl:w-96 flex-1 lg:flex-none lg:h-full bg-[#171A20] border-t lg:border-t-0 lg:border-l border-[#303642] p-2.5 sm:p-4 flex flex-col min-h-[140px] overflow-hidden">
+      <div className="w-full lg:w-80 xl:w-96 flex-1 min-h-[140px] lg:flex-none lg:h-full bg-[#171A20] border-t lg:border-t-0 lg:border-l border-[#303642] p-2.5 sm:p-4 flex flex-col overflow-hidden">
         <div className="text-[11px] sm:text-xs font-mono font-bold uppercase tracking-wider text-[#A7A9AD] mb-1.5 pb-1 border-b border-[#303642] flex items-center justify-between shrink-0">
           <span>Match Activity Log</span>
           <span className="text-[10px] text-[#6F737B]">{game.logs.length} Events</span>
@@ -285,14 +298,8 @@ export default function GameBoard({
             return (
               <div
                 key={log.id}
-                className="flex items-start space-x-2 py-0.5 border-b border-[#232832]/60 text-[#A7A9AD]"
+                className="flex items-start space-x-2 py-1 border-b border-[#232832]/60 text-[#A7A9AD]"
               >
-                <span className="text-[#6F737B] text-[10px] shrink-0 pt-0.5">
-                  {new Date(log.timestamp).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
                 {teamBadge}
                 <span className="leading-normal text-[#F1F0EC] flex-1 break-words">{log.message}</span>
               </div>
