@@ -37,8 +37,7 @@ export default function Header({
 
   const copyRoomLink = async () => {
     if (!roomState?.code) return;
-    const url = `${window.location.origin}/game/${roomState.code}`;
-    await copyToClipboard(url);
+    await copyToClipboard(roomState.code);
     setCopied(true);
     sounds.playCardClick();
     setTimeout(() => setCopied(false), 2000);
