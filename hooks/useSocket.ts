@@ -66,12 +66,12 @@ export function useSocket() {
           setIsConnected(true);
           ws.send(JSON.stringify({ type: "register", roomCode, playerId: pid }));
           
-          // Application-level ping to keep cloud load-balancers alive
+          // Application-level ping to keep cloud load-balancers alive and sync room state
           pingInterval = setInterval(() => {
             if (ws.readyState === WebSocket.OPEN) {
               ws.send(JSON.stringify({ type: "ping", playerId: pid }));
             }
-          }, 20000);
+          }, 10000);
         };
 
         ws.onmessage = (event) => {
