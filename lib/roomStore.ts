@@ -27,16 +27,4 @@ export async function deleteRoom(roomCode: string): Promise<void> {
   globalInMemoryRooms.delete(code);
 }
 
-/**
- * Cleanup stale rooms (older than 12 hours)
- * Call this periodically if running a persistent server
- */
-export async function cleanupStaleRooms(): Promise<void> {
-  const now = Date.now();
-  const maxAge = 12 * 60 * 60 * 1000; // 12 hours
-  for (const [code, room] of globalInMemoryRooms.entries()) {
-    if (now - room.createdAt > maxAge) {
-      globalInMemoryRooms.delete(code);
-    }
-  }
-}
+// Rooms persist in memory until the server restarts or all players leave.

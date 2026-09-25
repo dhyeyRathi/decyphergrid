@@ -22,17 +22,17 @@ interface SocketClient {
   ws: WebSocket;
   playerId: string;
   roomCode: string;
-  isAlive: boolean;
+  lastSeen: number; // timestamp of last activity
 }
 
 // Map of playerId -> SocketClient
 const clients = new Map<string, SocketClient>();
 
-// Create HTTP server for Koyeb Health Checks & WS Upgrade
+// Create HTTP server for Health Checks & WS Upgrade
 const server = http.createServer((req, res) => {
   if (req.url === "/health" || req.url === "/") {
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ status: "ok", service: "decyphergrid-ws" }));
+    res.end(JSON.stringify({ status: "ok", service: "decyphergrid-ws", clients: clients.size }));
     return;
   }
   res.writeHead(404);
@@ -42,23 +42,33 @@ const server = http.createServer((req, res) => {
 const wss = new WebSocketServer({ server });
 
 /**
- * Broadcast updated room state to all connected players in the room
+ * Broadcast updated room state to ALL connected players in the room
  */
 async function broadcastRoomState(roomCode: string, roomObj?: any) {
   const room = roomObj || await getRoom(roomCode);
   if (!room) return;
 
+  const code = room.code.toUpperCase().trim();
+  console.log(`[BROADCAST] Room ${code}: ${room.players.length} players in room, ${clients.size} total clients`);
+
   for (const player of room.players) {
     const client = clients.get(player.id);
     if (client && client.ws.readyState === WebSocket.OPEN) {
       const publicState = serializeRoomForPlayer(room, player.id);
-      client.ws.send(
-        JSON.stringify({
-          type: "room_state",
-          roomCode: room.code,
-          state: publicState,
-        })
-      );
+      try {
+        client.ws.send(
+          JSON.stringify({
+            type: "room_state",
+            roomCode: room.code,
+            state: publicState,
+          })
+        );
+        console.log(`[BROADCAST] ✅ Sent room_state to player ${player.id.substring(0, 6)}...`);
+      } catch (err) {
+        console.error(`[BROADCAST] ❌ Failed to send to player ${player.id.substring(0, 6)}:`, err);
+      }
+    } else {
+      console.warn(`[BROADCAST] ⚠️ Player ${player.id.substring(0, 6)}... NOT found in clients or socket not open. InClients: ${clients.has(player.id)}, ReadyState: ${client?.ws?.readyState}`);
     }
   }
 }
@@ -67,11 +77,11 @@ wss.on("connection", (ws: WebSocket) => {
   let clientPlayerId: string | null = null;
   let clientRoomCode: string | null = null;
 
+  console.log(`[WS] New connection established. Total connections: ${wss.clients.size}`);
+
   ws.on("message", async (data: Buffer | string) => {
     try {
       const msg = JSON.parse(data.toString());
-
-      // (Ping handler removed from here, it's handled below)
 
       // Register connection binding (roomCode + playerId)
       if (msg.type === "register" || msg.type === "init") {
@@ -79,14 +89,23 @@ wss.on("connection", (ws: WebSocket) => {
         if (playerId && roomCode) {
           const formattedCode = String(roomCode).toUpperCase().trim();
           const pid = String(playerId);
+
+          // If this player already has a DIFFERENT socket registered, close the old one
+          const existingClient = clients.get(pid);
+          if (existingClient && existingClient.ws !== ws && existingClient.ws.readyState === WebSocket.OPEN) {
+            console.log(`[REGISTER] Player ${pid.substring(0, 6)}... has stale socket, replacing.`);
+          }
+
           clientPlayerId = pid;
           clientRoomCode = formattedCode;
           clients.set(pid, {
             ws,
             playerId: pid,
             roomCode: formattedCode,
-            isAlive: true,
+            lastSeen: Date.now(),
           });
+
+          console.log(`[REGISTER] Player ${pid.substring(0, 6)}... registered for room ${formattedCode}. Total clients: ${clients.size}`);
 
           // Send immediate state update to the registering client
           const room = await getRoom(formattedCode);
@@ -104,15 +123,18 @@ wss.on("connection", (ws: WebSocket) => {
         return;
       }
 
-      // Handle Application-level Pings
+      // Handle Application-level Pings (this is the heartbeat)
       if (msg.type === "ping") {
-        const client = clients.get(msg.playerId);
+        const pid = String(msg.playerId);
+        const client = clients.get(pid);
         if (client) {
-          client.isAlive = true;
+          // Update the ws reference in case it changed
+          client.lastSeen = Date.now();
+          client.ws = ws;
           if (client.roomCode) {
             getRoom(client.roomCode).then((room) => {
               if (room) {
-                const publicState = serializeRoomForPlayer(room, msg.playerId);
+                const publicState = serializeRoomForPlayer(room, pid);
                 ws.send(JSON.stringify({ type: "room_state", roomCode: room.code, state: publicState }));
               } else {
                 ws.send(JSON.stringify({ type: "pong" }));
@@ -121,6 +143,16 @@ wss.on("connection", (ws: WebSocket) => {
               ws.send(JSON.stringify({ type: "pong" }));
             });
             return;
+          }
+        } else {
+          // Client not registered yet — register them from the ping
+          if (clientPlayerId && clientRoomCode) {
+            clients.set(clientPlayerId, {
+              ws,
+              playerId: clientPlayerId,
+              roomCode: clientRoomCode,
+              lastSeen: Date.now(),
+            });
           }
         }
         ws.send(JSON.stringify({ type: "pong" }));
@@ -146,13 +178,13 @@ wss.on("connection", (ws: WebSocket) => {
         if (playerId) clientPlayerId = String(playerId);
         if (roomCode) clientRoomCode = String(roomCode).toUpperCase().trim();
 
-        // Ensure socket mapping is set
+        // ALWAYS ensure socket mapping is current
         if (clientPlayerId && clientRoomCode) {
           clients.set(clientPlayerId, {
             ws,
             playerId: clientPlayerId,
             roomCode: clientRoomCode,
-            isAlive: true,
+            lastSeen: Date.now(),
           });
         }
 
@@ -161,11 +193,13 @@ wss.on("connection", (ws: WebSocket) => {
         // --- CREATE ROOM ---
         if (action === "create_room") {
           const { room, player } = createRoomLogic(playerName, playerId, code);
-          saveRoom(room).catch(console.error);
+          await saveRoom(room);
 
           clientPlayerId = player.id;
           clientRoomCode = room.code;
-          clients.set(player.id, { ws, playerId: player.id, roomCode: room.code, isAlive: true });
+          clients.set(player.id, { ws, playerId: player.id, roomCode: room.code, lastSeen: Date.now() });
+
+          console.log(`[ACTION] Room ${room.code} created by ${player.id.substring(0, 6)}...`);
 
           const state = serializeRoomForPlayer(room, player.id);
           ws.send(
@@ -177,7 +211,6 @@ wss.on("connection", (ws: WebSocket) => {
               state,
             })
           );
-          broadcastRoomState(room.code, room);
           return;
         }
 
@@ -195,11 +228,13 @@ wss.on("connection", (ws: WebSocket) => {
             return;
           }
           const { room: updatedRoom, player } = joinRoomLogic(room, playerName, playerId);
-          saveRoom(updatedRoom).catch(console.error);
+          await saveRoom(updatedRoom);
 
           clientPlayerId = player.id;
           clientRoomCode = code;
-          clients.set(player.id, { ws, playerId: player.id, roomCode: code, isAlive: true });
+          clients.set(player.id, { ws, playerId: player.id, roomCode: code, lastSeen: Date.now() });
+
+          console.log(`[ACTION] Player ${player.id.substring(0, 6)}... joined room ${code}. Players: ${updatedRoom.players.map(p => p.id.substring(0, 6)).join(", ")}`);
 
           const state = serializeRoomForPlayer(updatedRoom, player.id);
           ws.send(
@@ -211,7 +246,8 @@ wss.on("connection", (ws: WebSocket) => {
               state,
             })
           );
-          broadcastRoomState(code, updatedRoom);
+          // Broadcast AFTER sending action_response so the joiner is definitely in clients
+          await broadcastRoomState(code, updatedRoom);
           return;
         }
 
@@ -219,15 +255,14 @@ wss.on("connection", (ws: WebSocket) => {
         if (action === "leave_game") {
           if (!room) return;
           const updatedRoom = leaveGameLogic(room, playerId || "");
-          saveRoom(updatedRoom).catch(console.error);
+          await saveRoom(updatedRoom);
 
-          // Disconnect client from clients map manually since they are leaving
           if (clientPlayerId) {
             clients.delete(clientPlayerId);
           }
 
           ws.send(JSON.stringify({ type: "action_response", action, success: true }));
-          broadcastRoomState(code, updatedRoom);
+          await broadcastRoomState(code, updatedRoom);
           return;
         }
 
@@ -265,10 +300,12 @@ wss.on("connection", (ws: WebSocket) => {
           return;
         }
 
-        // Save & Broadcast
-        saveRoom(room).catch(console.error);
-        broadcastRoomState(code, room);
+        // Save & Broadcast to ALL players in the room
+        await saveRoom(room);
 
+        console.log(`[ACTION] ${action} in room ${code} by ${(playerId || "unknown").substring(0, 6)}...`);
+
+        // Send action_response to the acting player FIRST
         const state = serializeRoomForPlayer(room, playerId || "");
         ws.send(
           JSON.stringify({
@@ -279,6 +316,9 @@ wss.on("connection", (ws: WebSocket) => {
             state,
           })
         );
+
+        // Then broadcast to ALL players (including the acting player, so everyone is in sync)
+        await broadcastRoomState(code, room);
       }
     } catch (err: any) {
       console.error("[WebSocket Server Error]", err);
@@ -291,40 +331,37 @@ wss.on("connection", (ws: WebSocket) => {
     }
   });
 
-  ws.on("pong", () => {
-    if (clientPlayerId) {
-      const client = clients.get(clientPlayerId);
-      if (client) client.isAlive = true;
-    }
-  });
-
   ws.on("close", () => {
+    console.log(`[WS] Connection closed for player ${clientPlayerId?.substring(0, 6) || "unknown"}`);
     if (clientPlayerId) {
       const currentClient = clients.get(clientPlayerId);
+      // Only delete if this exact ws is the one registered (prevents race with reconnect)
       if (currentClient && currentClient.ws === ws) {
         clients.delete(clientPlayerId);
+        console.log(`[WS] Removed player ${clientPlayerId.substring(0, 6)}... from clients. Remaining: ${clients.size}`);
       }
     }
   });
 });
 
-// Periodic ping/pong cleanup every 30s to keep Koyeb connection healthy
-const interval = setInterval(() => {
+// Cleanup: remove clients that haven't been seen in 60 seconds
+// (No more protocol-level ping/pong — we rely on the 10s app-level ping from the client)
+const cleanupInterval = setInterval(() => {
+  const now = Date.now();
+  const timeout = 60000; // 60 seconds
   for (const [playerId, client] of clients.entries()) {
-    if (!client.isAlive) {
-      client.ws.terminate();
+    if (now - client.lastSeen > timeout) {
+      console.log(`[CLEANUP] Player ${playerId.substring(0, 6)}... timed out (${Math.round((now - client.lastSeen) / 1000)}s). Removing.`);
+      try { client.ws.terminate(); } catch {}
       clients.delete(playerId);
-    } else {
-      client.isAlive = false;
-      client.ws.ping();
     }
   }
 }, 30000);
 
 wss.on("close", () => {
-  clearInterval(interval);
+  clearInterval(cleanupInterval);
 });
 
 server.listen(PORT, () => {
-  console.log(`🚀 Decyphergrid Koyeb WebSocket Server running on port ${PORT}`);
+  console.log(`🚀 Decyphergrid WebSocket Server running on port ${PORT}`);
 });
