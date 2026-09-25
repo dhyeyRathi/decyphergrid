@@ -76,12 +76,13 @@ export default function Header({
         )}
 
         {/* Right Actions */}
-        <div className="flex items-center space-x-4 text-xs font-mono">
+        <div className="flex items-center space-x-2 sm:space-x-4 text-xs font-mono">
           <button
             onClick={onOpenRules}
             className="text-[#A7A9AD] hover:text-[#F1F0EC] transition-colors font-medium"
           >
-            Rules
+            <span className="sm:hidden">Rules</span>
+            <span className="hidden sm:inline">Rules</span>
           </button>
 
           {onLeaveGame && (
@@ -89,7 +90,8 @@ export default function Header({
               onClick={onLeaveGame}
               className="text-[#A7A9AD] hover:text-[#B85C5C] transition-colors font-medium"
             >
-              Leave Game
+              <span className="sm:hidden">Leave</span>
+              <span className="hidden sm:inline">Leave Game</span>
             </button>
           )}
 
@@ -107,9 +109,9 @@ export default function Header({
 
           <button
             onClick={onEditName}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-[#1D2129] border border-[#303642] text-[#F1F0EC] hover:border-[#424A5A] transition-colors font-medium"
+            className="flex items-center space-x-1.5 px-2 py-1.5 sm:px-3 sm:py-1.5 rounded-lg bg-[#1D2129] border border-[#303642] text-[#F1F0EC] hover:border-[#424A5A] transition-colors font-medium"
           >
-            <span className="truncate max-w-[120px]">{playerName || "Player"}</span>
+            <span className="truncate max-w-[60px] sm:max-w-[120px]">{playerName || "Player"}</span>
             {currentPlayer?.team && currentPlayer?.role && (
               <span
                 className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${

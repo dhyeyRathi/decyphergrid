@@ -115,7 +115,23 @@ wss.on("connection", (ws: WebSocket) => {
       // Handle Application-level Pings
       if (msg.type === "ping") {
         const client = clients.get(msg.playerId);
-        if (client) client.isAlive = true;
+        if (client) {
+          client.isAlive = true;
+          if (client.roomCode) {
+            getRoom(client.roomCode).then((room) => {
+              if (room) {
+                const publicState = serializeRoomForPlayer(room, msg.playerId);
+                ws.send(JSON.stringify({ type: "room_state", roomCode: room.code, state: publicState }));
+              } else {
+                ws.send(JSON.stringify({ type: "pong" }));
+              }
+            }).catch(() => {
+              ws.send(JSON.stringify({ type: "pong" }));
+            });
+            return;
+          }
+        }
+        ws.send(JSON.stringify({ type: "pong" }));
         return;
       }
 

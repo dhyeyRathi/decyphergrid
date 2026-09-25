@@ -447,7 +447,7 @@ export function selectCardLogic(
       game,
       "SYSTEM",
       `${player.name} REVEALED THE ASSASSIN CARD: "${card.word}"! ${currentTeam} LOSES IMMEDIATELY! ${opponentTeam} WINS!`,
-      opponentTeam
+      currentTeam
     );
   }
 

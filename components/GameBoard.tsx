@@ -249,9 +249,8 @@ export default function GameBoard({
                       GIVE CLUE
                     </button>
                   </div>
-
-                  {clueError && <p className="w-full text-[10px] text-[#B85C5C] mt-0.5">{clueError}</p>}
                 </form>
+                {clueError && <p className="w-full text-[10px] text-[#B85C5C] mt-2 px-1">{clueError}</p>}
               ) : isGuessingPhase && game.currentClue ? (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-1.5 sm:gap-2 h-full">
                   <div className="flex items-center space-x-1.5 truncate">
