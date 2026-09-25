@@ -137,7 +137,17 @@ export default function LandingPage() {
         </div>
       </main>
 
-
+      {/* About & Credits */}
+      <footer className="w-full max-w-xl mx-auto px-6 pb-8 text-center space-y-4">
+        <p className="text-[#6F737B] text-xs sm:text-sm leading-relaxed font-normal">
+          Two teams. One spymaster each. 25 secret words on the board. Your spymaster gives a single-word hint — your team has to figure out which words connect to it. Pick right and win. Pick wrong... and you might just help the other team — or hit the assassin and lose it all.
+        </p>
+        <div className="flex items-center justify-center space-x-2 text-[#4A4E56] text-[11px] font-mono tracking-wider uppercase">
+          <span className="h-px w-6 bg-[#303642]" />
+          <span>Developed by <span className="text-[#A7A9AD]">DHYEY RATHI</span></span>
+          <span className="h-px w-6 bg-[#303642]" />
+        </div>
+      </footer>
 
       {/* Modals */}
       <NameModal
