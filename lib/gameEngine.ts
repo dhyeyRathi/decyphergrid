@@ -483,6 +483,64 @@ export function endTurnLogic(room: Room, playerId: string): Room {
 }
 
 /**
+ * LEAVE GAME LOGIC
+ */
+export function leaveGameLogic(room: Room, playerId: string): Room {
+  const index = room.players.findIndex((p) => p.id === playerId);
+  if (index === -1) return room;
+
+  const player = room.players[index];
+  room.players.splice(index, 1);
+
+  // Update room admin if admin is disconnected or left
+  if (!room.players.some((p) => p.id === room.adminId)) {
+    const firstConnected = room.players.find((p) => p.connected);
+    if (firstConnected) {
+      room.adminId = firstConnected.id;
+      firstConnected.isAdmin = true;
+    }
+  }
+
+  // If game is active, check if we still have the required roles
+  if (room.game && room.game.phase !== "FINISHED") {
+    const game = room.game;
+    const redSpymaster = room.players.find((p) => p.team === "RED" && p.role === "SPYMASTER");
+    const redOperatives = room.players.filter((p) => p.team === "RED" && p.role === "OPERATIVE");
+    const blueSpymaster = room.players.find((p) => p.team === "BLUE" && p.role === "SPYMASTER");
+    const blueOperatives = room.players.filter((p) => p.team === "BLUE" && p.role === "OPERATIVE");
+
+    let terminate = false;
+    let reason = "";
+
+    if (!redSpymaster) { terminate = true; reason = "RED Spymaster left the game."; }
+    else if (redOperatives.length === 0) { terminate = true; reason = "All RED Operatives left the game."; }
+    else if (!blueSpymaster) { terminate = true; reason = "BLUE Spymaster left the game."; }
+    else if (blueOperatives.length === 0) { terminate = true; reason = "All BLUE Operatives left the game."; }
+
+    if (terminate) {
+      game.phase = "FINISHED";
+      if (game.redCardsLeft === 9 && game.blueCardsLeft === 8) {
+        game.winner = null;
+        game.winReason = `${reason} No cards were guessed yet. It's a draw!`;
+      } else if (game.redCardsLeft < game.blueCardsLeft) {
+        game.winner = "RED";
+        game.winReason = `${reason} RED wins by having fewer cards left.`;
+      } else if (game.blueCardsLeft < game.redCardsLeft) {
+        game.winner = "BLUE";
+        game.winReason = `${reason} BLUE wins by having fewer cards left.`;
+      } else {
+        game.winner = null;
+        game.winReason = `${reason} It's a draw!`;
+      }
+
+      addLog(game, "GAME_OVER", game.winReason);
+    }
+  }
+
+  return room;
+}
+
+/**
  * RESET GAME LOGIC
  */
 export function resetGameLogic(room: Room): Room {

@@ -12,6 +12,7 @@ interface HeaderProps {
   currentPlayerId?: string;
   onEditName: () => void;
   onOpenRules: () => void;
+  onLeaveGame?: () => void;
   roomState?: PublicRoomState | null;
 }
 
@@ -20,6 +21,7 @@ export default function Header({
   currentPlayerId,
   onEditName,
   onOpenRules,
+  onLeaveGame,
   roomState,
 }: HeaderProps) {
   const [copied, setCopied] = useState(false);
@@ -81,6 +83,15 @@ export default function Header({
           >
             Rules
           </button>
+
+          {onLeaveGame && (
+            <button
+              onClick={onLeaveGame}
+              className="text-[#A7A9AD] hover:text-[#B85C5C] transition-colors font-medium"
+            >
+              Leave Game
+            </button>
+          )}
 
           <button
             onClick={toggleSound}

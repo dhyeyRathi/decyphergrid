@@ -10,6 +10,7 @@ import GameLog from "@/components/GameLog";
 import GameOverModal from "@/components/GameOverModal";
 import NameModal from "@/components/NameModal";
 import RulesModal from "@/components/RulesModal";
+import LeaveModal from "@/components/LeaveModal";
 import { useSocket } from "@/hooks/useSocket";
 import { getPlayerNameCookie } from "@/lib/cookies";
 
@@ -38,11 +39,13 @@ export default function GameRoomPage({ params }: PageProps) {
     selectCard,
     endTurn,
     playAgain,
+    leaveGame,
   } = useSocket();
 
   const [playerName, setPlayerName] = useState("");
   const [isNameModalOpen, setIsNameModalOpen] = useState(false);
   const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
+  const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const [isJoining, setIsJoining] = useState(true);
 
   // Dynamic tab title update
@@ -134,6 +137,7 @@ export default function GameRoomPage({ params }: PageProps) {
             currentPlayerId={playerId}
             onEditName={() => setIsNameModalOpen(true)}
             onOpenRules={() => setIsRulesModalOpen(true)}
+            onLeaveGame={() => setIsLeaveModalOpen(true)}
             roomState={roomState}
           />
           <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
@@ -158,6 +162,7 @@ export default function GameRoomPage({ params }: PageProps) {
             onEndTurn={() => endTurn(roomCode)}
             onOpenRules={() => setIsRulesModalOpen(true)}
             onEditName={() => setIsNameModalOpen(true)}
+            onLeaveGame={() => setIsLeaveModalOpen(true)}
           />
 
           <GameOverModal
@@ -179,6 +184,15 @@ export default function GameRoomPage({ params }: PageProps) {
       <RulesModal
         isOpen={isRulesModalOpen}
         onClose={() => setIsRulesModalOpen(false)}
+      />
+
+      <LeaveModal
+        isOpen={isLeaveModalOpen}
+        onCancel={() => setIsLeaveModalOpen(false)}
+        onConfirm={() => {
+          leaveGame(roomCode);
+          router.push("/");
+        }}
       />
     </div>
   );

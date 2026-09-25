@@ -11,6 +11,7 @@ import {
   selectCardLogic,
   endTurnLogic,
   resetGameLogic,
+  leaveGameLogic,
   serializeRoomForPlayer,
 } from "../lib/gameEngine";
 import { getRoom, saveRoom } from "../lib/roomStore";
@@ -202,6 +203,22 @@ wss.on("connection", (ws: WebSocket) => {
               state,
             })
           );
+          broadcastRoomState(code, updatedRoom);
+          return;
+        }
+
+        // --- LEAVE GAME ---
+        if (action === "leave_game") {
+          if (!room) return;
+          const updatedRoom = leaveGameLogic(room, playerId || "");
+          saveRoom(updatedRoom).catch(console.error);
+
+          // Disconnect client from clients map manually since they are leaving
+          if (clientPlayerId) {
+            clients.delete(clientPlayerId);
+          }
+
+          ws.send(JSON.stringify({ type: "action_response", action, success: true }));
           broadcastRoomState(code, updatedRoom);
           return;
         }

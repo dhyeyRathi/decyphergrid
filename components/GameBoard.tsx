@@ -32,6 +32,7 @@ interface GameBoardProps {
   onEndTurn: () => void;
   onOpenRules?: () => void;
   onEditName?: () => void;
+  onLeaveGame?: () => void;
 }
 
 export default function GameBoard({
@@ -43,9 +44,10 @@ export default function GameBoard({
   onEndTurn,
   onOpenRules,
   onEditName,
+  onLeaveGame,
 }: GameBoardProps) {
   const [clueWord, setClueWord] = useState("");
-  const [clueNumber, setClueNumber] = useState<number>(1);
+  const [clueNumber, setClueNumber] = useState<number>(0);
   const [clueError, setClueError] = useState("");
   const [copied, setCopied] = useState(false);
   const [inspectingCard, setInspectingCard] = useState<PublicCard | null>(null);
@@ -87,11 +89,16 @@ export default function GameBoard({
       setClueError("Clue must be ONE single word (no spaces).");
       return;
     }
+    if (clueNumber === 0) {
+      setClueError("Please select the number of cards.");
+      return;
+    }
 
     setClueError("");
     onSubmitClue(trimmed, clueNumber);
     sounds.playClueSubmit();
     setClueWord("");
+    setClueNumber(0);
   };
 
   const handleCardClick = (card: PublicCard) => {
@@ -147,6 +154,16 @@ export default function GameBoard({
               >
                 <HelpCircle className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Rules</span>
+              </button>
+            )}
+
+            {onLeaveGame && (
+              <button
+                onClick={onLeaveGame}
+                className="flex items-center space-x-1 text-xs font-mono text-[#A7A9AD] hover:text-[#B85C5C] transition-colors ml-3"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Leave</span>
               </button>
             )}
           </div>
@@ -215,7 +232,10 @@ export default function GameBoard({
                       onChange={(e) => setClueNumber(Number(e.target.value))}
                       className="px-1.5 py-1 sm:px-2 sm:py-1.5 bg-[#171A20] border border-[#303642] rounded-lg text-[#F1F0EC] font-bold text-[10px] sm:text-xs focus:outline-none"
                     >
-                      {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+                      <option value={0} disabled>
+                        --
+                      </option>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
                         <option key={n} value={n}>
                           {n}
                         </option>
@@ -429,7 +449,7 @@ function GridCardItem({
               <img
                 src={cardImg}
                 alt={card.word}
-                className="w-full h-full object-cover object-center scale-[1.02]"
+                className="w-full h-full object-fill object-center"
               />
             ) : (
               <div className="w-full h-full bg-[#171A20]" />

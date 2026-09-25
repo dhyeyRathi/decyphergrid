@@ -290,6 +290,13 @@ export function useSocket() {
     [sendAction]
   );
 
+  const leaveGame = useCallback(
+    (roomCode: string) => {
+      sendAction({ action: "leave_game", roomCode });
+    },
+    [sendAction]
+  );
+
   const clearError = useCallback(() => setErrorMsg(null), []);
 
   return {
@@ -309,5 +316,6 @@ export function useSocket() {
     selectCard,
     endTurn,
     playAgain,
+    leaveGame,
   };
 }
