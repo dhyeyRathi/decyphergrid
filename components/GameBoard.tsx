@@ -263,8 +263,8 @@ export default function GameBoard({
       </div>
 
       {/* ================= CENTER PANEL: 5x5 CARDS GRID ================= */}
-      <div className="flex-1 min-h-0 w-full lg:h-full flex items-center justify-center p-2 sm:p-4 lg:p-6 overflow-hidden mx-auto">
-        <div className="grid grid-cols-5 aspect-square w-full max-w-[calc(100vh-20rem)] sm:max-w-[calc(100vh-26rem)] lg:max-w-[calc(100vh-4rem)] lg:max-h-[calc(100vh-4rem)] gap-1.5 sm:gap-2.5 lg:gap-3.5 mx-auto">
+      <div className="flex-1 min-h-0 w-full lg:h-full flex items-center justify-center p-2 sm:p-4 lg:p-6 overflow-hidden mx-auto @container">
+        <div className="grid grid-cols-5 aspect-square w-full max-w-[100cqmin] gap-1.5 sm:gap-2.5 lg:gap-3.5 mx-auto">
           {game.cards.map((card) => (
             <GridCardItem
               key={card.id}
