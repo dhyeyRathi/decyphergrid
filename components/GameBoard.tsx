@@ -13,12 +13,12 @@ export function getCardImage(cardId: string, type?: CardType): string {
     hash = (hash << 5) - hash + cardId.charCodeAt(i);
     hash |= 0;
   }
-  const variant = (Math.abs(hash) % 2) + 1;
+  const absHash = Math.abs(hash);
 
-  if (type === "RED") return `/cards/card_red_${variant}.jpg`;
-  if (type === "BLUE") return `/cards/card_blue_${variant}.jpg`;
-  if (type === "NEUTRAL") return `/cards/card_neutral_${variant}.jpg`;
-  if (type === "ASSASSIN") return `/cards/card_assassin_1.jpg`;
+  if (type === "RED") return `/cards/card_red_${(absHash % 4) + 1}.jpg`;
+  if (type === "BLUE") return `/cards/card_blue_${(absHash % 4) + 1}.jpg`;
+  if (type === "NEUTRAL") return `/cards/card_neutral_${(absHash % 4) + 1}.jpg`;
+  if (type === "ASSASSIN") return `/cards/card_assassin_${(absHash % 2) + 1}.jpg`;
   return "";
 }
 
@@ -72,8 +72,8 @@ export default function GameBoard({
   const isGuessingPhase = game.phase === "GUESSING";
 
   const canSubmitClue = isCluePhase && isSpymaster && isMyTeamTurn;
-  const canGuessCard = isGuessingPhase && isOperative && isMyTeamTurn;
-  const canEndTurn = isGuessingPhase && isOperative && isMyTeamTurn;
+  const canGuessCard = isGuessingPhase && isMyTeamTurn;
+  const canEndTurn = isGuessingPhase && isMyTeamTurn;
 
   const handleClueSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -250,100 +250,18 @@ export default function GameBoard({
       </div>
 
       {/* ================= CENTER PANEL: 5x5 CARDS GRID ================= */}
-      <div className="flex-none lg:flex-1 flex flex-col items-center justify-center p-2 sm:p-4 overflow-hidden shrink-0 w-full max-w-[550px] mx-auto">
-        <div className="grid grid-cols-5 aspect-square w-full gap-1.5 sm:gap-2.5">
-          {game.cards.map((card) => {
-            const isRevealed = card.revealed;
-            const cardType = card.type;
-            const cardImg = getCardImage(card.id, cardType);
-
-            let cardClasses = "";
-            let borderClass = "border-[#303642]";
-
-            if (isRevealed) {
-              if (cardType === "RED") {
-                cardClasses = "game-card-revealed-red";
-                borderClass = "border-[#C85A5A]";
-              } else if (cardType === "BLUE") {
-                cardClasses = "game-card-revealed-blue";
-                borderClass = "border-[#5A85B5]";
-              } else if (cardType === "NEUTRAL") {
-                cardClasses = "game-card-revealed-neutral";
-                borderClass = "border-[#807667]";
-              } else if (cardType === "ASSASSIN") {
-                cardClasses = "game-card-revealed-assassin";
-                borderClass = "border-[#64748B]";
-              }
-            } else if (isSpymaster) {
-              if (cardType === "RED") {
-                cardClasses = "game-card-unrevealed spymaster-hint-red";
-              } else if (cardType === "BLUE") {
-                cardClasses = "game-card-unrevealed spymaster-hint-blue";
-              } else if (cardType === "NEUTRAL") {
-                cardClasses = "game-card-unrevealed spymaster-hint-neutral";
-              } else if (cardType === "ASSASSIN") {
-                cardClasses = "game-card-unrevealed spymaster-hint-assassin";
-              }
-            } else {
-              cardClasses = "game-card-unrevealed";
-            }
-
-            return (
-              <div
-                key={card.id}
-                className={`aspect-square w-full card-perspective ${isRevealed ? "card-flipped" : ""}`}
-              >
-                <div className="card-flip-inner">
-                  {/* Front Face: Unrevealed Card / Spymaster Key Hint */}
-                  <button
-                    onClick={() => {
-                      if (!isRevealed && canGuessCard) {
-                        handleCardClick(card);
-                      } else if (isRevealed) {
-                        setInspectingCard(card);
-                        sounds.playCardClick();
-                      }
-                    }}
-                    disabled={!isRevealed && !canGuessCard}
-                    className={`card-face-front w-full h-full p-1 sm:p-2 flex flex-col items-center justify-center text-center select-none font-sans font-extrabold tracking-wide text-[10px] sm:text-xs md:text-sm lg:text-base uppercase rounded-xl transition-all ${cardClasses} ${
-                      (!isRevealed && canGuessCard) || isRevealed ? "cursor-pointer" : "cursor-default"
-                    }`}
-                  >
-                    <span className="break-words leading-tight text-center">{card.word}</span>
-                  </button>
-
-                  {/* Back Face: Animated Character Artwork Image Card (Text Under Image) */}
-                  <button
-                    onClick={() => {
-                      setInspectingCard(card);
-                      sounds.playCardClick();
-                    }}
-                    className={`card-face-back w-full h-full flex flex-col rounded-xl border-2 overflow-hidden shadow-lg group cursor-pointer transition-transform active:scale-95 ${borderClass}`}
-                  >
-                    {/* Artwork Image Container */}
-                    <div className="flex-1 w-full relative overflow-hidden bg-[#171A20]">
-                      {cardImg ? (
-                        <img
-                          src={cardImg}
-                          alt={card.word}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-[#171A20]" />
-                      )}
-                    </div>
-
-                    {/* Word Label Underneath Image */}
-                    <div className="w-full bg-[#14171D] border-t border-[#303642]/80 py-0.5 sm:py-1 px-1 flex items-center justify-center text-center shrink-0">
-                      <span className="text-[#F1F0EC] font-mono font-bold text-[8px] sm:text-[10px] md:text-[11px] uppercase tracking-wider truncate w-full">
-                        {card.word}
-                      </span>
-                    </div>
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+      <div className="flex-1 w-full lg:h-full flex items-center justify-center p-2 sm:p-4 lg:p-6 overflow-hidden max-w-[550px] lg:max-w-none mx-auto">
+        <div className="grid grid-cols-5 aspect-square w-full lg:max-w-[calc(100vh-4rem)] lg:max-h-[calc(100vh-4rem)] gap-1.5 sm:gap-2.5 lg:gap-3.5">
+          {game.cards.map((card) => (
+            <GridCardItem
+              key={card.id}
+              card={card}
+              isSpymaster={isSpymaster}
+              isGameOver={game.phase === "FINISHED"}
+              canGuessCard={canGuessCard}
+              onCardClick={handleCardClick}
+            />
+          ))}
         </div>
       </div>
 
@@ -381,131 +299,126 @@ export default function GameBoard({
           })}
         </div>
       </div>
-
-      {/* ================= CARD INSPECTION BOX MODAL ================= */}
-      {inspectingCard && (
-        <CardInspectionModal
-          card={inspectingCard}
-          onClose={() => setInspectingCard(null)}
-        />
-      )}
     </div>
   );
 }
 
-// Interactive Modal Component that opens as a box to reveal original card contents underneath
-function CardInspectionModal({ card, onClose }: { card: PublicCard; onClose: () => void }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const cardImg = getCardImage(card.id, card.type);
+// Sub-component for individual Grid Cards handling grayed background & on-card 3s box opening animation
+function GridCardItem({
+  card,
+  isSpymaster,
+  isGameOver,
+  canGuessCard,
+  onCardClick,
+}: {
+  card: PublicCard;
+  isSpymaster: boolean;
+  isGameOver: boolean;
+  canGuessCard: boolean;
+  onCardClick: (card: PublicCard) => void;
+}) {
+  const [isPeeking, setIsPeeking] = useState(false);
+  const peekTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const toggleBox = () => {
+  const isRevealed = card.revealed || isGameOver;
+  const cardType = card.type;
+  const cardImg = getCardImage(card.id, cardType);
+
+  let frontCardClasses = "";
+  let revealedBorderClass = "border-[#303642]";
+
+  if (isRevealed) {
+    if (cardType === "RED") {
+      revealedBorderClass = "border-[#B85C5C]/60";
+    } else if (cardType === "BLUE") {
+      revealedBorderClass = "border-[#52759B]/60";
+    } else if (cardType === "NEUTRAL") {
+      revealedBorderClass = "border-[#807667]/60";
+    } else if (cardType === "ASSASSIN") {
+      revealedBorderClass = "border-[#64748B]/60";
+    }
+  } else if (isSpymaster) {
+    if (cardType === "RED") {
+      frontCardClasses = "game-card-unrevealed spymaster-hint-red";
+    } else if (cardType === "BLUE") {
+      frontCardClasses = "game-card-unrevealed spymaster-hint-blue";
+    } else if (cardType === "NEUTRAL") {
+      frontCardClasses = "game-card-unrevealed spymaster-hint-neutral";
+    } else if (cardType === "ASSASSIN") {
+      frontCardClasses = "game-card-unrevealed spymaster-hint-assassin";
+    }
+  } else {
+    frontCardClasses = "game-card-unrevealed";
+  }
+
+  const handleRevealedClick = () => {
     sounds.playCardClick();
-    setIsOpen(!isOpen);
+    setIsPeeking(true);
+
+    if (peekTimerRef.current) clearTimeout(peekTimerRef.current);
+    peekTimerRef.current = setTimeout(() => {
+      setIsPeeking(false);
+    }, 3000);
   };
 
+  useEffect(() => {
+    return () => {
+      if (peekTimerRef.current) clearTimeout(peekTimerRef.current);
+    };
+  }, []);
+
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in"
-      onClick={onClose}
-    >
-      <div
-        className="bg-[#171A20] border border-[#303642] rounded-3xl p-5 max-w-xs sm:max-w-sm w-full space-y-4 shadow-2xl relative overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between pb-2 border-b border-[#303642] font-mono">
-          <div>
-            <span className="text-[10px] text-[#6F737B] uppercase block font-bold">CARD INSPECTION BOX</span>
-            <h3 className="text-lg font-black text-[#F1F0EC] uppercase tracking-wider">
+    <div className={`aspect-square w-full card-perspective ${isRevealed ? "card-flipped" : ""}`}>
+      <div className="card-flip-inner">
+        {/* FRONT FACE: Unrevealed Card / Spymaster Key Hint */}
+        <button
+          onClick={() => {
+            if (!isRevealed && canGuessCard) {
+              onCardClick(card);
+            }
+          }}
+          disabled={!isRevealed && !canGuessCard}
+          className={`card-face-front w-full h-full p-1 sm:p-2 lg:p-3 flex flex-col items-center justify-center text-center select-none font-sans font-extrabold tracking-wider text-[10px] sm:text-xs md:text-sm lg:text-base xl:text-lg uppercase rounded-xl sm:rounded-2xl transition-all ${frontCardClasses} ${
+            !isRevealed && canGuessCard ? "cursor-pointer" : "cursor-default"
+          }`}
+        >
+          <span className="break-words leading-tight text-center">{card.word}</span>
+        </button>
+
+        {/* BACK FACE: Revealed Card with Grayed Background & Interactive On-Card Box Opening */}
+        <div
+          onClick={handleRevealedClick}
+          className={`card-face-back w-full h-full relative rounded-xl sm:rounded-2xl border-2 overflow-hidden shadow-lg cursor-pointer bg-[#14171D] ${revealedBorderClass}`}
+          title="Click to open box & reveal word for 3 seconds"
+        >
+          {/* UNDERNEATH BASE LAYER: Grayed card background displaying the original word */}
+          <div className="absolute inset-0 bg-[#14171D] p-1 flex flex-col items-center justify-center text-center space-y-1 z-0">
+            <span className="text-[8px] sm:text-[9px] font-mono text-[#6F737B] uppercase font-bold tracking-wider">
+              {cardType === "NEUTRAL" ? "BYSTANDER" : `${cardType || "CARD"} AGENT`}
+            </span>
+            <span className="text-[10px] sm:text-xs md:text-sm lg:text-base font-mono font-black text-[#F1F0EC] uppercase tracking-wider break-words leading-tight px-1">
               {card.word}
-            </h3>
+            </span>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg bg-[#232832] text-[#A7A9AD] hover:text-[#F1F0EC] transition-colors"
+          {/* OVERLAY IMAGE BOX LID: Animates sliding UPWARD when clicked for 3 seconds */}
+          <div
+            className={`absolute inset-0 z-10 w-full h-full relative overflow-hidden bg-[#171A20] transition-transform duration-500 ease-in-out border-b border-[#303642] ${
+              isPeeking ? "-translate-y-[88%]" : "translate-y-0"
+            }`}
           >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Box Lid / Card Reveal Container */}
-        <div className="relative aspect-square w-full rounded-2xl overflow-hidden border-2 border-[#303642] bg-[#111318] shadow-inner flex flex-col justify-between p-4">
-          {/* UNDERNEATH LAYER: What was originally on the card */}
-          <div className="absolute inset-0 p-5 flex flex-col items-center justify-center text-center space-y-3 bg-[#111318] z-0">
-            <span className="text-[10px] font-mono uppercase tracking-widest text-[#6F737B] font-bold">
-              ORIGINAL CARD IDENTITY
-            </span>
-
-            <div className="text-2xl font-black font-sans uppercase tracking-wide text-[#F1F0EC] px-3 py-1 bg-[#171A20] border border-[#303642] rounded-xl">
-              {card.word}
-            </div>
-
-            {card.type && (
-              <div className="flex flex-col items-center space-y-1">
-                <span className="text-[10px] font-mono text-[#A7A9AD]">ASSIGNED AGENT TEAM:</span>
-                <span
-                  className={`px-3 py-1 rounded-xl text-xs font-mono font-bold uppercase tracking-wider ${
-                    card.type === "RED"
-                      ? "bg-[#B85C5C]/20 text-[#B85C5C] border border-[#B85C5C]/50"
-                      : card.type === "BLUE"
-                      ? "bg-[#52759B]/20 text-[#52759B] border border-[#52759B]/50"
-                      : card.type === "NEUTRAL"
-                      ? "bg-[#C8BFAE]/20 text-[#C8BFAE] border border-[#C8BFAE]/50"
-                      : "bg-slate-800 text-slate-200 border border-slate-600"
-                  }`}
-                >
-                  {card.type === "NEUTRAL" ? "BYSTANDER (NEUTRAL)" : `${card.type} AGENT`}
-                </span>
-              </div>
+            {/* Full Artwork Image */}
+            {cardImg ? (
+              <img
+                src={cardImg}
+                alt={card.word}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-[#171A20]" />
             )}
           </div>
-
-          {/* OVERLAY BOX LID (IMAGE + TEXT): Animates sliding/lifting open when clicked */}
-          <div
-            onClick={toggleBox}
-            className={`absolute inset-0 z-10 flex flex-col bg-[#171A20] cursor-pointer transition-transform duration-500 ease-in-out shadow-2xl border-b-2 border-[#303642] ${
-              isOpen ? "-translate-y-[85%]" : "translate-y-0"
-            }`}
-            title="Click image to open box lid"
-          >
-            {/* Image */}
-            <div className="flex-1 w-full relative overflow-hidden bg-[#111318]">
-              {cardImg ? (
-                <img
-                  src={cardImg}
-                  alt={card.word}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full bg-[#171A20]" />
-              )}
-
-              {/* Click prompt badge on lid */}
-              <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/20 text-[9px] font-mono font-bold text-white tracking-wide">
-                {isOpen ? "TAP TO CLOSE BOX" : "TAP IMAGE TO OPEN BOX"}
-              </div>
-            </div>
-
-            {/* Text under image on lid */}
-            <div className="w-full bg-[#171A20] border-t border-[#303642] py-2 px-3 text-center shrink-0 flex items-center justify-between">
-              <span className="text-[#F1F0EC] font-mono font-bold text-xs uppercase tracking-wider">
-                {card.word}
-              </span>
-              <span className="text-[10px] font-mono text-[#A7A9AD]">
-                {isOpen ? "▲ OPEN" : "▼ CLOSED"}
-              </span>
-            </div>
-          </div>
         </div>
-
-        {/* Action Toggle Button */}
-        <button
-          onClick={toggleBox}
-          className="w-full py-2.5 rounded-xl bg-[#232832] border border-[#303642] text-[#F1F0EC] hover:bg-[#303642] font-mono font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center space-x-2"
-        >
-          <span>{isOpen ? "CLOSE BOX LID" : "OPEN BOX LID & PEEK UNDERNEATH"}</span>
-        </button>
       </div>
     </div>
   );

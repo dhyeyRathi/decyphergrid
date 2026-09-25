@@ -42,8 +42,8 @@ export async function saveRoom(room: Room): Promise<void> {
   const code = room.code.toUpperCase().trim();
   if (redis) {
     try {
-      // 86400 seconds = 24 hours TTL for temporary rooms
-      await redis.set(`room:${code}`, room, { ex: 86400 });
+      // 14400 seconds = 4 hours TTL — rooms auto-expire after 4h of no updates
+      await redis.set(`room:${code}`, room, { ex: 14400 });
     } catch (err) {
       console.error("[RoomStore] Redis saveRoom error, saving to memory fallback:", err);
       globalInMemoryRooms.set(code, room);

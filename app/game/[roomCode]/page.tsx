@@ -31,7 +31,6 @@ export default function GameRoomPage({ params }: PageProps) {
     joinRoom,
     setTeamAndRole,
     randomizeTeams,
-    addTestBots,
     kickPlayer,
     startGame,
     submitClue,

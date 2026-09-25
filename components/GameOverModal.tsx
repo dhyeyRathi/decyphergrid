@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import confetti from "canvas-confetti";
 import { PublicRoomState } from "@/types/game";
 import { sounds } from "@/lib/soundEffects";
@@ -15,13 +15,41 @@ export default function GameOverModal({
   onPlayAgain,
 }: GameOverModalProps) {
   const [dismissed, setDismissed] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const finishedAtRef = useRef<number | null>(null);
 
   const game = roomState.game;
   const isFinished = game?.phase === "FINISHED";
 
   useEffect(() => {
-    if (isFinished) {
+    if (!isFinished) {
+      finishedAtRef.current = null;
+      setShowModal(false);
       setDismissed(false);
+      return;
+    }
+
+    if (finishedAtRef.current === null) {
+      finishedAtRef.current = Date.now();
+    }
+
+    const elapsed = Date.now() - finishedAtRef.current;
+    const remainingDelay = Math.max(0, 3000 - elapsed);
+
+    if (remainingDelay === 0) {
+      setShowModal(true);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setShowModal(true);
+    }, remainingDelay);
+
+    return () => clearTimeout(timer);
+  }, [isFinished, roomState]);
+
+  useEffect(() => {
+    if (showModal && isFinished) {
       sounds.playVictory();
       confetti({
         particleCount: 80,
@@ -29,9 +57,9 @@ export default function GameOverModal({
         origin: { y: 0.6 },
       });
     }
-  }, [isFinished, game?.winner]);
+  }, [showModal]);
 
-  if (!isFinished || !game || dismissed) return null;
+  if (!isFinished || !game || !showModal || dismissed) return null;
 
   const winner = game.winner;
   const isRedWinner = winner === "RED";

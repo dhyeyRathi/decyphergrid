@@ -196,58 +196,6 @@ export function randomizeTeamsLogic(room: Room): Room {
 }
 
 /**
- * ADD 3 TEST PLAYERS LOGIC (FOR QUICK TESTING)
- */
-export function addTestBotsLogic(room: Room): Room {
-  const botNames = ["Alpha_Bot", "Bravo_Bot", "Charlie_Bot"];
-
-  botNames.forEach((bname, idx) => {
-    const existing = room.players.find((p) => p.name === bname);
-    if (!existing) {
-      const botPlayer: Player = {
-        id: `test-bot-${idx + 1}-${Date.now()}`,
-        socketId: "",
-        name: bname,
-        team: null,
-        role: null,
-        connected: true,
-        isAdmin: false,
-      };
-      room.players.push(botPlayer);
-    }
-  });
-
-  // Auto-fill missing roles so the game can be started immediately for testing
-  const redSpymaster = room.players.find((p) => p.team === "RED" && p.role === "SPYMASTER");
-  const redOperatives = room.players.filter((p) => p.team === "RED" && p.role === "OPERATIVE");
-  const blueSpymaster = room.players.find((p) => p.team === "BLUE" && p.role === "SPYMASTER");
-  const blueOperatives = room.players.filter((p) => p.team === "BLUE" && p.role === "OPERATIVE");
-
-  const unassigned = room.players.filter((p) => !p.team || !p.role);
-
-  for (const p of unassigned) {
-    if (!room.players.some((x) => x.team === "RED" && x.role === "SPYMASTER")) {
-      p.team = "RED";
-      p.role = "SPYMASTER";
-    } else if (!room.players.some((x) => x.team === "RED" && x.role === "OPERATIVE")) {
-      p.team = "RED";
-      p.role = "OPERATIVE";
-    } else if (!room.players.some((x) => x.team === "BLUE" && x.role === "SPYMASTER")) {
-      p.team = "BLUE";
-      p.role = "SPYMASTER";
-    } else if (!room.players.some((x) => x.team === "BLUE" && x.role === "OPERATIVE")) {
-      p.team = "BLUE";
-      p.role = "OPERATIVE";
-    } else {
-      p.team = "BLUE";
-      p.role = "OPERATIVE";
-    }
-  }
-
-  return room;
-}
-
-/**
  * KICK PLAYER LOGIC
  */
 export function kickPlayerLogic(room: Room, adminId: string, targetPlayerId: string): Room {
@@ -394,8 +342,8 @@ export function selectCardLogic(
   }
 
   const player = room.players.find((p) => p.id === playerId);
-  if (!player || player.team !== game.currentTeam || player.role !== "OPERATIVE") {
-    throw new Error(`Only ${game.currentTeam} Operatives can guess cards right now.`);
+  if (!player || player.team !== game.currentTeam) {
+    throw new Error(`Only ${game.currentTeam} team players can guess cards right now.`);
   }
 
   const card = game.cards.find((c) => c.id === cardId);
@@ -518,8 +466,8 @@ export function endTurnLogic(room: Room, playerId: string): Room {
   }
 
   const player = room.players.find((p) => p.id === playerId);
-  if (!player || player.team !== game.currentTeam || player.role !== "OPERATIVE") {
-    throw new Error(`Only ${game.currentTeam} Operatives can end turn.`);
+  if (!player || player.team !== game.currentTeam) {
+    throw new Error(`Only ${game.currentTeam} team players can end turn.`);
   }
 
   const currentTeam = game.currentTeam;
@@ -539,7 +487,7 @@ export function endTurnLogic(room: Room, playerId: string): Room {
  */
 export function resetGameLogic(room: Room): Room {
   room.game = null;
-  return startGameLogic(room, room.adminId);
+  return room;
 }
 
 /**

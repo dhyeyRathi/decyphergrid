@@ -101,10 +101,11 @@ export function useSocket() {
     };
   }, [connectNativeWebSocket]);
 
-  // Periodic polling fallback to keep room state updated across clients
+  // Polling fallback — only runs when WebSocket is disconnected
   useEffect(() => {
     const interval = setInterval(() => {
-      if (activeRoomCodeRef.current && playerId) {
+      // Only poll if WS is down and we're in an active room
+      if (!isConnected && activeRoomCodeRef.current && playerId) {
         fetch("/api/game/action", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -122,10 +123,10 @@ export function useSocket() {
           })
           .catch(() => {});
       }
-    }, 1500);
+    }, 10000);
 
     return () => clearInterval(interval);
-  }, [playerId]);
+  }, [playerId, isConnected]);
 
   // Execute authoritative action
   const sendAction = useCallback(
@@ -196,13 +197,6 @@ export function useSocket() {
     [sendAction]
   );
 
-  const addTestBots = useCallback(
-    (roomCode: string) => {
-      sendAction({ action: "add_test_bots", roomCode });
-    },
-    [sendAction]
-  );
-
   const kickPlayer = useCallback(
     (roomCode: string, adminId: string, targetPlayerId: string) => {
       sendAction({ action: "kick_player", roomCode, adminId, targetPlayerId });
@@ -257,7 +251,6 @@ export function useSocket() {
     joinRoom,
     setTeamAndRole,
     randomizeTeams,
-    addTestBots,
     kickPlayer,
     startGame,
     submitClue,

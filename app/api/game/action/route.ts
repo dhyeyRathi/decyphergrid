@@ -5,7 +5,6 @@ import {
   joinRoomLogic,
   setTeamAndRoleLogic,
   randomizeTeamsLogic,
-  addTestBotsLogic,
   kickPlayerLogic,
   startGameLogic,
   submitClueLogic,
@@ -73,7 +72,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "Room not found" }, { status: 404 });
     }
 
-    // --- GET STATE / RECONNECT ---
+    // --- GET STATE / RECONNECT (read-only — no save/broadcast needed) ---
     if (action === "get_state") {
       const state = serializeRoomForPlayer(room, playerId || "");
       return NextResponse.json({ success: true, roomCode: code, state });
@@ -84,8 +83,6 @@ export async function POST(req: Request) {
       room = setTeamAndRoleLogic(room, playerId, team, role);
     } else if (action === "randomize_teams") {
       room = randomizeTeamsLogic(room);
-    } else if (action === "add_test_bots") {
-      room = addTestBotsLogic(room);
     } else if (action === "kick_player") {
       room = kickPlayerLogic(room, adminId, targetPlayerId);
     } else if (action === "start_game") {
@@ -102,7 +99,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "Invalid action" }, { status: 400 });
     }
 
-    // Save and broadcast updated state
+    // Save ONCE and broadcast (no double-save)
     await saveRoom(room);
     await broadcastRoomState(code, room);
 

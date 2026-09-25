@@ -37,10 +37,7 @@ export async function broadcastRoomState(roomCode: string, targetRoom?: Room | n
   const room = targetRoom || (await getRoom(roomCode));
   if (!room) return;
 
-  // Save room state to shared ephemeral store (Upstash Redis / Memory)
-  await saveRoom(room);
-
-  // Send player-specific secret state over native WebSockets
+  // Send player-specific state over native WebSockets (no re-save needed — caller saves)
   for (const player of room.players) {
     const client = activeClients.get(player.id);
     if (client && client.socket.readyState === WebSocket.OPEN) {
